@@ -2,14 +2,14 @@
 
 namespace Diversworld\CalendarEditorBundle\Modules;
 
-use BackendTemplate;
+use Contao\BackendTemplate;
 use Contao\Events;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
 use Diversworld\CalendarEditorBundle\Models\CalendarModelEdit;
 use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
-use FrontendTemplate;
+use Contao\FrontendTemplate;
 use Contao\CoreBundle\Routing\ScopeMatcher;
 use Symfony\Component\HttpFoundation\RequestStack;
 

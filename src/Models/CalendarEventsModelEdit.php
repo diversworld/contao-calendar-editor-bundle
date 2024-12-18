@@ -3,9 +3,9 @@
 namespace Diversworld\CalendarEditorBundle\Models;
 
 use Contao\CalendarEventsModel;
-use Date;
+use Contao\Date;
 
-class CalendarEventsModelEdit extends \CalendarEventsModel
+class CalendarEventsModelEdit extends CalendarEventsModel
 {
     public static function findByIdOrAlias($ids, array $options = []): ?CalendarEventsModel
     {

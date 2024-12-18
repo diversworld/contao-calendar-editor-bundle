@@ -1,4 +1,4 @@
-<?php if (!defined('TL_ROOT')) die('You can not access this file directly!');
+<?php
 
 $GLOBALS['TL_LANG']['FMD']['calendarEdit']  = array('Calendar FE edit', 'Adds a calendar to the page with additional frontend editing-links (for authorized members).');
 $GLOBALS['TL_LANG']['FMD']['EventEditor']  = array('Event editor', 'Add a formular to the page which allows an authorized FE user to add and edit events.');

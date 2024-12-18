@@ -2,7 +2,7 @@
 
 namespace Diversworld\CalendarEditorBundle\Modules;
 
-use BackendTemplate;
+use Contao\BackendTemplate;
 use Contao\Date;
 use Contao\PageModel;
 use Contao\StringUtil;

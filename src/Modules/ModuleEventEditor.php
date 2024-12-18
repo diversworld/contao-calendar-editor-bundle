@@ -2,7 +2,7 @@
 
 namespace Diversworld\CalendarEditorBundle\Modules;
 
-use BackendTemplate;
+use Contao\BackendTemplate;
 use Contao\CoreBundle\Routing\ScopeMatcher;
 use Contao\Email;
 use Contao\Input;
@@ -12,9 +12,9 @@ use ContentModel;
 use Diversworld\CalendarEditorBundle\Models\CalendarEventsModelEdit;
 use Diversworld\CalendarEditorBundle\Models\CalendarModelEdit;
 use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
-use Date;
-use Events;
-use FrontendTemplate;
+use Contao\Date;
+use Contao\Events;
+use Contao\FrontendTemplate;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleEventEditor extends Events

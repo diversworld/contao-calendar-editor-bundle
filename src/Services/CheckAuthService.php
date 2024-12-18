@@ -24,7 +24,9 @@ class CheckAuthService
             return true;
         }
 
-        if (FE_USER_LOGGED_IN) {
+        $hasFrontendUser = System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
+
+        if ($hasFrontendUser) {
             // Admins are authorized as well ;-)
             if ($this->isUserAdmin($calendar, $user)) {
                 return true;
@@ -47,7 +49,9 @@ class CheckAuthService
             return false;
         }
 
-        if (FE_USER_LOGGED_IN) {
+        $hasFrontendUser = System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
+
+        if ($hasFrontendUser) {
             // Get Admin-Groups which are allowed to edit events in this calendar
             // (Admins are allowed to edit events even if the "only owner"-setting is checked)
             // (Admins are allowed to add events on elapsed days)
