@@ -1,6 +1,6 @@
 <?php
 
-namespace DanielGausi\CalendarEditorBundle\Modules;
+namespace Diversworld\CalendarEditorBundle\Modules;
 
 use Contao\BackendTemplate;
 use Contao\CalendarEventsModel;

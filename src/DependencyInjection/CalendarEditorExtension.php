@@ -1,6 +1,6 @@
 <?php
 
-namespace DanielGausi\CalendarEditorBundle\DependencyInjection;
+namespace Diversworld\CalendarEditorBundle\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;

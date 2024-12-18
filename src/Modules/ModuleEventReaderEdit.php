@@ -1,14 +1,14 @@
 <?php
 
-namespace DanielGausi\CalendarEditorBundle\Modules;
+namespace Diversworld\CalendarEditorBundle\Modules;
 
 use BackendTemplate;
 use Contao\Events;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
-use DanielGausi\CalendarEditorBundle\Models\CalendarModelEdit;
-use DanielGausi\CalendarEditorBundle\Services\CheckAuthService;
+use Diversworld\CalendarEditorBundle\Models\CalendarModelEdit;
+use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use FrontendTemplate;
 use Contao\CoreBundle\Routing\ScopeMatcher;
 use Symfony\Component\HttpFoundation\RequestStack;

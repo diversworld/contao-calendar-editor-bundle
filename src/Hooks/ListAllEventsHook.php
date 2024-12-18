@@ -1,10 +1,10 @@
 <?php
 
-namespace DanielGausi\CalendarEditorBundle\Hooks;
+namespace Diversworld\CalendarEditorBundle\Hooks;
 
 use Contao\System;
-use DanielGausi\CalendarEditorBundle\Models\CalendarModelEdit;
-use DanielGausi\CalendarEditorBundle\Services\CheckAuthService;
+use Diversworld\CalendarEditorBundle\Models\CalendarModelEdit;
+use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Contao\Frontend;
 
 class ListAllEventsHook extends Frontend

@@ -18,5 +18,5 @@ services:
 
 
   caledit.service.auth:
-    class: DanielGausi\CalendarEditorBundle\Services\CheckAuthService
+    class: Diversworld\CalendarEditorBundle\Services\CheckAuthService
     public: true

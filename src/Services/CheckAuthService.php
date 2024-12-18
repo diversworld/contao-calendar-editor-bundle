@@ -1,15 +1,15 @@
 <?php
 
-namespace DanielGausi\CalendarEditorBundle\Services;
+namespace Diversworld\CalendarEditorBundle\Services;
 
 use Contao\FrontendUser;
 use Contao\MemberModel;
 use Contao\StringUtil;
-use function DanielGausi\CalendarEditorBundle\EventIsNotElapsed;
-use function DanielGausi\CalendarEditorBundle\EventIsNotElapsed2;
-use function DanielGausi\CalendarEditorBundle\MidnightTime;
-use function DanielGausi\CalendarEditorBundle\UserIsAdmin;
-use function DanielGausi\CalendarEditorBundle\UserIsAuthorizedUser;
+use function Diversworld\CalendarEditorBundle\EventIsNotElapsed;
+use function Diversworld\CalendarEditorBundle\EventIsNotElapsed2;
+use function Diversworld\CalendarEditorBundle\MidnightTime;
+use function Diversworld\CalendarEditorBundle\UserIsAdmin;
+use function Diversworld\CalendarEditorBundle\UserIsAuthorizedUser;
 
 class CheckAuthService
 {

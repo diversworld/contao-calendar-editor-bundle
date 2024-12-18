@@ -1,6 +1,6 @@
 <?php
 
-namespace DanielGausi\CalendarEditorBundle\Modules;
+namespace Diversworld\CalendarEditorBundle\Modules;
 
 use BackendTemplate;
 use Contao\CoreBundle\Routing\ScopeMatcher;
@@ -9,9 +9,9 @@ use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
 use ContentModel;
-use DanielGausi\CalendarEditorBundle\Models\CalendarEventsModelEdit;
-use DanielGausi\CalendarEditorBundle\Models\CalendarModelEdit;
-use DanielGausi\CalendarEditorBundle\Services\CheckAuthService;
+use Diversworld\CalendarEditorBundle\Models\CalendarEventsModelEdit;
+use Diversworld\CalendarEditorBundle\Models\CalendarModelEdit;
+use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Date;
 use Events;
 use FrontendTemplate;

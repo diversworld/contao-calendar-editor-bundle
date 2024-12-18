@@ -1,6 +1,6 @@
 <?php
 
-namespace DanielGausi\CalendarEditorBundle\Models;
+namespace Diversworld\CalendarEditorBundle\Models;
 
 use Contao\CalendarEventsModel;
 use Date;
