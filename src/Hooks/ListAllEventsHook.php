@@ -5,7 +5,7 @@ namespace DanielGausi\CalendarEditorBundle\Hooks;
 use Contao\System;
 use DanielGausi\CalendarEditorBundle\Models\CalendarModelEdit;
 use DanielGausi\CalendarEditorBundle\Services\CheckAuthService;
-use Frontend;
+use Contao\Frontend;
 
 class ListAllEventsHook extends Frontend
 {
