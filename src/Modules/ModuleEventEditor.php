@@ -3,6 +3,7 @@
 namespace DanielGausi\CalendarEditorBundle\Modules;
 
 use BackendTemplate;
+use Contao\CoreBundle\Routing\ScopeMatcher;
 use Contao\Email;
 use Contao\Input;
 use Contao\StringUtil;
@@ -14,6 +15,7 @@ use DanielGausi\CalendarEditorBundle\Services\CheckAuthService;
 use Date;
 use Events;
 use FrontendTemplate;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleEventEditor extends Events
 {
@@ -26,12 +28,23 @@ class ModuleEventEditor extends Events
     protected string $errorString = '';
     protected array $allowedCalendars = [];
 
+    public function __construct(private ScopeMatcher $scopeMatcher){
+    }
+
+    public function isBackend() {
+        return $this->scopeMatcher->isBackendRequest();
+    }
+
+    public function isFrontend() {
+        return $this->scopeMatcher->isFrontendRequest();
+    }
+
     /**
      * generate Module
      */
     public function generate()
     {
-        if (TL_MODE == 'BE') {
+        if ($this->isBackend()) {
             $objTemplate = new BackendTemplate('be_wildcard');
             $objTemplate->wildcard = '### EVENT EDITOR ###';
             $objTemplate->title = $this->headline;
@@ -67,8 +80,10 @@ class ModuleEventEditor extends Events
             // Fallback to English if the user language is not supported
             $this->language = 'en';
 
-            $file = sprintf('%s/vendor/mindbird/contao-calendar-editor/src/Resources/contao/tinyMCE/%s.php', TL_ROOT, $configuration);
-            if (file_exists(TL_ROOT . '/assets/tinymce4/js/langs/' . $GLOBALS['TL_LANGUAGE'] . '.js')) {
+            $rootDir = System::getContainer()->getParameter('kernel.project_dir');
+
+            $file = sprintf('%s/vendor/mindbird/contao-calendar-editor/src/Resources/contao/tinyMCE/%s.php', $rootDir, $configuration);
+            if (file_exists($rootDir . '/assets/tinymce4/js/langs/' . $GLOBALS['TL_LANGUAGE'] . '.js')) {
                 $this->language = $GLOBALS['TL_LANGUAGE'];
             }
 
@@ -210,7 +225,7 @@ class ModuleEventEditor extends Events
             return false;
         }
 
-        // check calendar settings 
+        // check calendar settings
         if ($checkAuthService->isUserAuthorized($objCalendar, $user)) {
             // if the editing is disabled in the BE: Deny editing in the FE
             if ($currentObjectData->disable_editing) {
@@ -475,7 +490,7 @@ class ModuleEventEditor extends Events
 
         if ($oldId === '') {
             // create new entry
-            $new_cid = $this->Database->prepare('INSERT INTO tl_calendar_events %s')->set($eventData)->execute()->insertId;
+            $new_cid = $this->Database->prepare('INSERT INTO tl_calendar_events () VALUES ()')->set($eventData)->execute()->insertId;
             $contentData['pid'] = $new_cid;
             $returnID = $new_cid;
         } else {
@@ -495,7 +510,7 @@ class ModuleEventEditor extends Events
             if ($oldContentId === '') {
                 // create new entry
                 $contentData['tstamp'] = time();
-                $this->Database->prepare('INSERT INTO tl_content %s')->set($contentData)->execute();
+                $this->Database->prepare('INSERT INTO tl_content VALUES (%s)')->set($contentData)->execute();
             } else {
                 // update existing entry
                 $this->Database->prepare("UPDATE tl_content %s WHERE id=?")->set($contentData)->execute($oldContentId);
@@ -1158,10 +1173,12 @@ class ModuleEventEditor extends Events
 
         $this->Template->submit = $GLOBALS['TL_LANG']['MSC']['caledit_saveData'];
 
+        $hasFrontendUser = System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
+
         if ((!$doNotSubmit) && ($this->Input->post('FORM_SUBMIT') == 'caledit_submit')) {
             // everything seems to be ok, so we can add the POST Data
             // into the Database
-            if (!FE_USER_LOGGED_IN) {
+            if (!$hasFrontendUser) {
                 $currentEventData['fe_user'] = ''; // no user
             } else {
                 $currentEventData['fe_user'] = $this->User->id; // set the FE_user here
@@ -1173,7 +1190,7 @@ class ModuleEventEditor extends Events
             $newDatesMail = '';
 
             // overwrite User
-            if (!FE_USER_LOGGED_IN) {
+            if (!$hasFrontendUser) {
                 $currentEventData['fe_user'] = ''; // no user
             } else {
                 $currentEventData['fe_user'] = $this->User->id; // set the FE_user here
@@ -1233,6 +1250,7 @@ class ModuleEventEditor extends Events
     {
         $notification = new Email();
         $notification->from = $GLOBALS['TL_ADMIN_EMAIL'];
+        $hasFrontendUser = System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
 
         $host = $this->Environment->host;
 
@@ -1248,7 +1266,8 @@ class ModuleEventEditor extends Events
 
         $arrRecipients = trimsplit(',', $this->caledit_mailRecipient);
         $mText = $GLOBALS['TL_LANG']['MSC']['caledit_MailEventdata'] . " \n\n";
-        if (!FE_USER_LOGGED_IN) {
+
+        if (!$hasFrontendUser) {
             $mText .= $GLOBALS['TL_LANG']['MSC']['caledit_MailUnregisteredUser'] . " \n";
         } else {
             $mText .= sprintf($GLOBALS['TL_LANG']['MSC']['caledit_MailUser'], $User) . " \n";

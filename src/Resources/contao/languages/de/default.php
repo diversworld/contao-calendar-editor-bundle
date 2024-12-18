@@ -1,5 +1,5 @@
 <?php
- 
+
 $GLOBALS['TL_LANG']['MSC']['caledit_addLabel'] = "[+]";
 $GLOBALS['TL_LANG']['MSC']['caledit_addTitle'] = "Einen Termin an diesem Tag einfügen.";
 $GLOBALS['TL_LANG']['MSC']['caledit_editLabel'] = "[bearbeiten]";
@@ -69,5 +69,5 @@ $GLOBALS['TL_LANG']['MSC']['caledit_ContentElementWithImage'] = "Diesem Termin w
 $GLOBALS['TL_LANG']['MSC']['caledit_error'] = "Ein Fehler ist aufgetreten.";
 $GLOBALS['TL_LANG']['MSC']['caledit_CloneWarning'] = "Sie sind dabei, einen Termin zu duplizieren. Stellen Sie sicher, dass alle Informationen korrekt sind, da Sie sonst später jeden einzelnen Termin bearbeiten müssen.";
 
- 
+
 ?>

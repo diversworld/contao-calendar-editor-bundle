@@ -1,17 +1,17 @@
 {
   "name": "mindbird/contao-calendar-editor",
   "description": "Contao Extension to create and edit calendar events in the frontend.",
-  "keywords": ["contao", 
-			   "calendar", 
-			   "calendar_editor", 
-			   "calendar editor", 
+  "keywords": ["contao",
+			   "calendar",
+			   "calendar_editor",
+			   "calendar editor",
 			   "calendar frontend",
-			   "events", "frontend", 
+			   "events", "frontend",
 			   "events frontend"],
   "type": "contao-bundle",
   "homepage": "https://github.com/mindbird/contao-calendar-editor",
   "license": "LGPL-3.0-or-later",
-	
+
 	"require": {
 		"php": "^8.1",
 		"contao/core-bundle": "~4.13" ,
@@ -22,13 +22,13 @@
 	"autoload": {
 		"psr-4": {
 			"DanielGausi\\CalendarEditorBundle\\": "src/"
-		},				
+		},
         "classmap": [
             "src/Resources/contao/"
 		],
 		"exclude-from-classmap": [
-            "src/Resources/contao/config/",			
-            "src/Resources/contao/dca/",			
+            "src/Resources/contao/config/",
+            "src/Resources/contao/dca/",
             "src/Resources/contao/languages/",
             "src/Resources/contao/templates/"
 		]
@@ -42,5 +42,7 @@
       "php-http/discovery": true,
       "contao-community-alliance/composer-plugin": true
     }
-  }
+  },
+  "version": "4.3.5"
 }
+

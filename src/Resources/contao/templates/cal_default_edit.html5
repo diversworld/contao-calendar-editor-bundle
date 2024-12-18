@@ -18,7 +18,7 @@
 		<td class="<?= $day['class']; ?>">
 			<div class="header">
 			<?= $day['label']; ?>
-			
+
 			<?php if (isset($day['holidayEvents']) && $day['holidayEvents']):
 				$finalTitle = '';
 				$finalEditRef = '';
@@ -26,26 +26,26 @@
 				$finalClass='';
 				$finalParent='';
 				?>
-				<?php foreach ($day['holidayEvents'] as $event): 
+				<?php foreach ($day['holidayEvents'] as $event):
 					$finalTitle = $event['title'];
 					$finalEditRef = $event['editRef'];
 					$finalEditTitle = $event['editTitle'];
 					$finalClass= $event['class'];
 					$finalParent = $event['parent'];
-				?>					
+				?>
 				<?php endforeach; ?>
 				<span class="event cal_<?= $finalParent; ?><?= $finalClass; ?>">
 					<?php if ($finalEditRef): ?>
 						<a href="<?= $finalEditRef; ?>" title="<?= $finalEditTitle; ?>"><?= $finalTitle; ?></a>
-					<?php else: ?>					
+					<?php else: ?>
 						<?= $finalTitle; ?>
 					<?php endif; ?>
 				</span>
-					
-			<?php endif; ?>					
+
+			<?php endif; ?>
 			<?php if (isset($day['addRef']) && $day['addRef']): ?>
 				<a href="<?= $day['addRef']; ?>" title="<?= $day['addTitle']; ?>"> <?= $day['addLabel']; ?>  </a>
-			<?php endif; ?>			
+			<?php endif; ?>
 			</div>
 			<?php foreach ($day['events'] as $event): ?>
 				<div class="event cal_<?= $event['parent']; ?><?= $event['class']; ?>">

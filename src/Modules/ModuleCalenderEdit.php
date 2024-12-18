@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace DanielGausi\CalendarEditorBundle\Modules;
 
@@ -9,19 +9,31 @@ use Contao\StringUtil;
 use Contao\System;
 use DanielGausi\CalendarEditorBundle\Models\CalendarModelEdit;
 use DanielGausi\CalendarEditorBundle\Services\CheckAuthService;
-use ModuleCalendar;
+use Contao\ModuleCalendar;
+use Contao\CoreBundle\Routing\ScopeMatcher;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleCalenderEdit extends ModuleCalendar
 {
 	// variable which indicates whether events can be added or not (on elapsed days)
 	protected bool $allowElapsedEvents;
 	protected bool $allowEditEvents;
-		
-	
+
+	public function __construct(private ScopeMatcher $scopeMatcher){
+    }
+
+    public function isBackend() {
+        return $this->scopeMatcher->isBackendRequest();
+    }
+
+    public function isFrontend() {
+        return $this->scopeMatcher->isFrontendRequest();
+    }
+
 	public function getHolidayCalendarIDs($cals): array
     {
-		$IDs = array();		
-		
+		$IDs = array();
+
 		if (is_array($cals)) {
 		foreach ($cals as $flupp) {
 			$IDs[] = $flupp;
@@ -35,10 +47,10 @@ class ModuleCalenderEdit extends ModuleCalendar
     {
         /** @var CheckAuthService $checkAuthService */
         $checkAuthService = System::getContainer()->get('caledit.service.auth');
-		$this->import('FrontendUser', 'User');			
+		$this->import('FrontendUser', 'User');
 		$this->allowElapsedEvents = false;
 		$this->allowEditEvents = false;
-				
+
 		$calendarModels = CalendarModelEdit::findByIds($arrCalendars);
 		foreach($calendarModels as $calendarModel) {
 			$this->allowElapsedEvents = ($this->allowElapsedEvents || $checkAuthService->isUserAuthorizedElapsedEvents($calendarModel, $this->User) );
@@ -71,14 +83,14 @@ class ModuleCalenderEdit extends ModuleCalendar
 
 		$intYear = date('Y', $this->Date->tstamp);
 		$intMonth = date('m', $this->Date->tstamp);
-		
+
 		$intColumnCount = -1;
 		$intNumberOfRows = ceil(($intDaysInMonth + $intFirstDayOffset) / 7);
 		$allEvents = $this->getAllEvents($this->cal_calendar, $this->Date->monthBegin, $this->Date->monthEnd);
 		$arrDays = [];
 
-		$dateformat = $GLOBALS['TL_CONFIG']['dateFormat'];	
-		
+		$dateformat = $GLOBALS['TL_CONFIG']['dateFormat'];
+
 		// Compile days
 		for ($i=1; $i<=($intNumberOfRows * 7); $i++)
 		{
@@ -108,7 +120,7 @@ class ModuleCalenderEdit extends ModuleCalendar
 
 			$arrDays[$strWeekClass][$i]['addLabel'] = $GLOBALS['TL_LANG']['MSC']['caledit_addLabel'];
 			$arrDays[$strWeekClass][$i]['addTitle'] = $GLOBALS['TL_LANG']['MSC']['caledit_addTitle'];
-			
+
 			// Inactive days
 			if (empty($intKey) || !isset($allEvents[$intKey]))
 			{
@@ -122,8 +134,8 @@ class ModuleCalenderEdit extends ModuleCalendar
 				$arrDays[$strWeekClass][$i]['events'] = [];
 
 				continue;
-			}		
-			
+			}
+
 			$events = [];
 			$holidayEvents = [];
 
@@ -143,12 +155,12 @@ class ModuleCalenderEdit extends ModuleCalendar
 					}
 				}
 			}
-			
+
 			if (count($holidayEvents) > 0) {
 				$strClass .= ' holiday';
 			}
 
-			$arrDays[$strWeekClass][$i]['label'] = $intDay;				
+			$arrDays[$strWeekClass][$i]['label'] = $intDay;
 			if ($this->allowEditEvents && ($this->allowElapsedEvents || ($intKey >= date('Ymd')) )  ){
 				$ts = mktime(8, 0, 0, $intMonth, $intDay, $intYear); // 8:00 at this day
 				$arrDays[$strWeekClass][$i]['addRef'] = $addUrl . '?add=' . Date::parse($dateformat, $ts);
@@ -162,10 +174,10 @@ class ModuleCalenderEdit extends ModuleCalendar
 
 		return $arrDays;
 	}
-	
+
 	public function generate(): string
     {
-        if (TL_MODE == 'BE') {
+        if ($this->isBackend()) {
             $objTemplate = new BackendTemplate('be_wildcard');
 
             $objTemplate->wildcard = '### CALENDAR WITH FE EDITING ###';
@@ -175,7 +187,7 @@ class ModuleCalenderEdit extends ModuleCalendar
             $objTemplate->href = 'contao/main.php?do=themes&amp;table=tl_module&amp;act=edit&amp;id=' . $this->id;
 
             return $objTemplate->parse();
-        }       
+        }
 
         return parent::generate();
     }
@@ -186,6 +198,6 @@ class ModuleCalenderEdit extends ModuleCalendar
 	 */
 	protected function compile(): void
     {
-        parent::compile();         	
+        parent::compile();
 	}
 }

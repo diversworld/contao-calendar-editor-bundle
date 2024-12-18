@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace DanielGausi\CalendarEditorBundle\Modules;
 
@@ -10,23 +10,35 @@ use Contao\System;
 use DanielGausi\CalendarEditorBundle\Models\CalendarModelEdit;
 use DanielGausi\CalendarEditorBundle\Services\CheckAuthService;
 use FrontendTemplate;
+use Contao\CoreBundle\Routing\ScopeMatcher;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleEventReaderEdit extends Events
 {
+    public function __construct(private ScopeMatcher $scopeMatcher){
+    }
+
+    public function isBackend() {
+        return $this->scopeMatcher->isBackendRequest();
+    }
+
+    public function isFrontend() {
+        return $this->scopeMatcher->isFrontendRequest();
+    }
 
 	/**
 	 * Template
 	 * @var string
 	 */
 	protected $strTemplate = 'mod_event_ReaderEditLink';
-	
+
 	/**
 	 * Display a wildcard in the back end
 	 * @return string
 	 */
 	public function generate()
 	{
-		if (TL_MODE == 'BE') {
+		if ($this->isBackend()) {
 			$objTemplate = new BackendTemplate('be_wildcard');
 
 			$objTemplate->wildcard = '### EVENT READER EDIT LINK ###';
@@ -37,12 +49,12 @@ class ModuleEventReaderEdit extends Events
 
 			return $objTemplate->parse();
 		}
-		
+
 		// Return if no event has been specified
 		if (!Input::get('events')) {
 			return '';
 		}
-		
+
 		$this->cal_calendar = $this->sortOutProtected(StringUtil::deserialize($this->cal_calendar));
 
 		// Return if there are no calendars
@@ -57,39 +69,39 @@ class ModuleEventReaderEdit extends Events
     {
 		$this->Template = new FrontendTemplate($this->strTemplate);
 		$this->Template->editRef = '';
-		
+
 		// FE user is logged in
 		$this->import('FrontendUser', 'User');
         $time = time();
-		
+
 		// Get current event
 		$objEvent = $this->Database->prepare("SELECT *, author AS authorId, (SELECT title FROM tl_calendar WHERE tl_calendar.id=tl_calendar_events.pid) AS calendar, (SELECT name FROM tl_user WHERE id=author) author FROM tl_calendar_events WHERE pid IN(" . implode(',', array_map('intval', $this->cal_calendar)) . ") AND (id=? OR alias=?)" . (!BE_USER_LOGGED_IN ? " AND (start='' OR start<?) AND (stop='' OR stop>?) AND published=1" : ""))
 								   ->limit(1)
 								   ->execute((is_numeric(Input::get('events')) ? Input::get('events') : 0), Input::get('events'), $time, $time);
 
-		if ($objEvent->numRows < 1) {				
+		if ($objEvent->numRows < 1) {
 			$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
-			$this->Template->error_class = 'error';			
+			$this->Template->error_class = 'error';
 			return;
 		}
-		
+
 		// get Calender with PID
         $calendarModel = CalendarModelEdit::findByPk($objEvent->pid);
 
-									
+
 		if ($calendarModel === null) {
 			return;
 		}
-		
+
 		if ($calendarModel->AllowEdit) {
 			// Calendar allows editing
 			// check user rights
             /** @var CheckAuthService $checkAuthService */
             $checkAuthService = System::getContainer()->get('caledit.service.auth');
-			
+
 			$isUserAuthorized = $checkAuthService->isUserAuthorized($calendarModel, $this->User);
 			$isUserAdmin = $checkAuthService->isUserAdmin($calendarModel, $this->User);
-			
+
 			$authorizedElapsedEvents = $checkAuthService->isUserAuthorizedElapsedEvents($calendarModel, $this->User);
 			$areEditLinksAllowed = $checkAuthService->areEditLinksAllowed($calendarModel, $objEvent->row(), $this->User->id, $isUserAdmin, $isUserAuthorized);
 
@@ -102,11 +114,11 @@ class ModuleEventReaderEdit extends Events
 				if ($objPage->numRows) {
 					$strUrl = $this->generateFrontendUrl($objPage->row(), '');
 				}
-					
+
 				$this->Template->editRef = $strUrl.'?edit='.$objEvent->id;
 				$this->Template->editLabel = $GLOBALS['TL_LANG']['MSC']['caledit_editLabel'];
 				$this->Template->editTitle = $GLOBALS['TL_LANG']['MSC']['caledit_editTitle'];
-				
+
 				if ($this->caledit_showCloneLink) {
 					$this->Template->cloneRef = $strUrl.'?clone='.$objEvent->id;
 					$this->Template->cloneLabel = $GLOBALS['TL_LANG']['MSC']['caledit_cloneLabel'];
@@ -124,7 +136,7 @@ class ModuleEventReaderEdit extends Events
 					$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_UnauthorizedUser'];
 					return;
 				}
-				
+
 				if ($objEvent->disable_editing) {
 					// the event is locked in the backend
 					$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_DisabledEvent'];
@@ -134,16 +146,16 @@ class ModuleEventReaderEdit extends Events
 						// the user is authorized, but the event has elapsed
 						$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_NoPast'];
                     } else {
-						// the user is NOT authorized at all (reason: only the creator can edit it)						
+						// the user is NOT authorized at all (reason: only the creator can edit it)
 						$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_OnlyUser'];
                     }
                     $this->Template->error_class = 'error';
                 }
-			}		
+			}
 		} else {
 			$this->Template->error_class = 'error';
 			$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
-		}		
+		}
 	}
 }
 

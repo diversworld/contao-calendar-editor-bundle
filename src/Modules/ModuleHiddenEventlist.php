@@ -2,17 +2,28 @@
 
 namespace DanielGausi\CalendarEditorBundle\Modules;
 
-use BackendTemplate;
-use CalendarEventsModel;
-use CalendarModel;
-use Config;
+use Contao\BackendTemplate;
+use Contao\CalendarEventsModel;
+use Contao\CalendarModel;
+use Contao\Config;
 use Contao\StringUtil;
-use ModuleEventlist;
-use PageModel;
+use Contao\ModuleEventlist;
+use Contao\PageModel;
+use Contao\CoreBundle\Routing\ScopeMatcher;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleHiddenEventlist extends ModuleEventlist
 {
+    public function __construct(private ScopeMatcher $scopeMatcher){
+    }
 
+    public function isBackend() {
+        return $this->scopeMatcher->isBackendRequest();
+    }
+
+    public function isFrontend() {
+        return $this->scopeMatcher->isFrontendRequest();
+    }
     /**
      * Current date object
      * @var integer
@@ -126,7 +137,7 @@ class ModuleHiddenEventlist extends ModuleEventlist
      */
     public function generate()
     {
-        if (TL_MODE == 'BE') {
+        if ($this->isBackend()) {
             $objTemplate = new BackendTemplate('be_wildcard');
 
             $objTemplate->wildcard = '### UNPULISHED EVENT LIST ###';

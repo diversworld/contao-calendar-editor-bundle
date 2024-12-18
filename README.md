@@ -11,7 +11,7 @@ New settings in the Contao Calender: Enable Frontend editing
 * option: Login required (highly recommended on productive sites)
 * Define member groups for editing: "Members" and "Admins", which can edit all events (unless they are locked in the Backend, see below)
 * option: Allow editing only for owner: Only the (Frontend) creator of an event is able to edit it later (Frontend-Admins can edit events from other users/admins anyway)
-
+ 
 New setting in the Contao Events
 * disable Frontend editing (lock single events for Frontend editing, even for Frontend Admins)
 
