@@ -16,7 +16,9 @@
  *
  */
 use Contao\Backend;
-
+use Contao\System;
+use \Symfony\Component\DependencyInjection\ContainerAwareInterface;
+use \Symfony\Component\DependencyInjection\ContainerAwareTrait;
 /**
  * Add palettes to tl_module
  */
@@ -259,8 +261,9 @@ $GLOBALS['TL_DCA']['tl_module']['fields']['caledit_dateImageSRC'] = array
 //caledit_dateIncludeCSS, caledit_dateIncludeCSSTheme,
 //caledit_dateImage, caledit_dateImageSRC'
 
-class calendar_eventeditor extends Backend
+class calendar_eventeditor extends Backend //implements ContainerAwareInterface
 {
+    //use ContainerAwareTrait;
 
 	/**
 	 * Import the back end user object
@@ -268,7 +271,7 @@ class calendar_eventeditor extends Backend
 	public function __construct()
 	{
 		parent::__construct();
-		$this->import('BackendUser', 'User');
+		//$this->import('BackendUser', 'User');
 	}
 
 	/**
@@ -305,12 +308,14 @@ class calendar_eventeditor extends Backend
 	}
 	public function getCalendars()
 	{
-		if (!$this->User->isAdmin && !is_array($this->User->calendars))
-		{
-			return array();
-		}
+        // Get the BackendUser from the Symfony container
+        $user = System::getContainer()->get('security.token_storage')->getToken()->getUser();
 
-		$arrCalendars = array();
+        if (!$user instanceof BackendUser || (!$user->isAdmin && !is_array($user->calendars))) {
+            return [];
+        }
+
+        $arrCalendars = array();
 		$objCalendars = $this->Database->execute("SELECT id, title FROM tl_calendar ORDER BY title");
 
 		while ($objCalendars->next())
@@ -330,19 +335,27 @@ class calendar_eventeditor extends Backend
      */
     public function getConfigFiles()
 	{
-		$arrConfigs = array();
+        $arrConfigs = array();
 
+        // Get the root directory from the Symfony container
         $rootDir = System::getContainer()->getParameter('kernel.project_dir');
 
-		//$arrFiles = scan(TL_ROOT . '/system/config/');
-		$arrFiles = scan($rootDir.'/vendor/mindbird/contao-calendar-editor/src/Resources/contao/tinyMCE/');// . '/system/config/');
+        // Define the path to the tinyMCE configuration files
+        $tinyMCEPath = $rootDir . '/vendor/mindbird/contao-calendar-editor/src/Resources/contao/tinyMCE/';
 
-		foreach( $arrFiles as $file ) {
-			//if (substr($file, 0, 4) == 'tiny') {
-				$arrConfigs[] = basename($file, '.php');
-			//}
-		}
-		return $arrConfigs;
+        // Check if the directory exists
+        if (is_dir($tinyMCEPath)) {
+            // Use scandir to list files in the directory
+            $arrFiles = scandir($tinyMCEPath);
+
+            foreach ($arrFiles as $file) {
+                // Include only files with the .php extension
+                if (pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+                    $arrConfigs[] = basename($file, '.php');
+                }
+            }
+        }
+        return $arrConfigs;
 	}
 }
 

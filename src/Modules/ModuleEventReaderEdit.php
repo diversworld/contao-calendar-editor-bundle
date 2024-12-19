@@ -4,6 +4,7 @@ namespace Diversworld\CalendarEditorBundle\Modules;
 
 use Contao\BackendTemplate;
 use Contao\Events;
+use Contao\FrontendUser;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
@@ -15,15 +16,48 @@ use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleEventReaderEdit extends Events
 {
-    public function __construct(private ScopeMatcher $scopeMatcher){
+    private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
+    private RequestStack $requestStack; // Dependency Injection für RequestStack
+
+    protected function initializeServices(): void
+    {
+        $container = System::getContainer();
+        $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
+        $this->requestStack = $container->get('request_stack');
+        $this->checkAuthService = System::getContainer()->get(CheckAuthService::class);
+    }
+    /**
+     * Check if the current request is a backend request
+     */
+    public function isBackend(): bool
+    {
+        // Fallback: Initialisiere RequestStack, falls es nicht gesetzt ist
+        if (!isset($this->requestStack)) {
+            $this->requestStack = System::getContainer()->get('request_stack');
+        }
+
+        $currentRequest = $this->requestStack->getCurrentRequest();
+
+        if (null === $currentRequest) {
+            return false; // Keine aktuelle Anfrage
+        }
+
+        return $this->scopeMatcher->isBackendRequest($currentRequest);
     }
 
-    public function isBackend() {
-        return $this->scopeMatcher->isBackendRequest();
-    }
+    /**
+     * Check if the current request is a frontend request
+     */
+    public function isFrontend(): bool
+    {
+        $currentRequest = $this->requestStack->getCurrentRequest();
 
-    public function isFrontend() {
-        return $this->scopeMatcher->isFrontendRequest();
+        // Sicherstellen, dass die aktuelle Anfrage existiert
+        if (null === $currentRequest) {
+            return false; // Annahme: Kein Request => kein Frontend
+        }
+
+        return $this->scopeMatcher->isFrontendRequest($currentRequest);
     }
 
 	/**
@@ -38,6 +72,8 @@ class ModuleEventReaderEdit extends Events
 	 */
 	public function generate()
 	{
+        $this->initializeServices();
+
 		if ($this->isBackend()) {
 			$objTemplate = new BackendTemplate('be_wildcard');
 
@@ -67,11 +103,15 @@ class ModuleEventReaderEdit extends Events
 
 	protected function compile(): void
     {
+        $this->initializeServices();
+
 		$this->Template = new FrontendTemplate($this->strTemplate);
 		$this->Template->editRef = '';
 
 		// FE user is logged in
-		$this->import('FrontendUser', 'User');
+        $this->initializeServices();
+
+        $this->User = FrontendUser::getInstance();
         $time = time();
 
 		// Get current event
@@ -96,14 +136,11 @@ class ModuleEventReaderEdit extends Events
 		if ($calendarModel->AllowEdit) {
 			// Calendar allows editing
 			// check user rights
-            /** @var CheckAuthService $checkAuthService */
-            $checkAuthService = System::getContainer()->get('caledit.service.auth');
+			$isUserAuthorized = $this->checkAuthService->isUserAuthorized($calendarModel, $this->User);
+			$isUserAdmin = $this->checkAuthService->isUserAdmin($calendarModel, $this->User);
 
-			$isUserAuthorized = $checkAuthService->isUserAuthorized($calendarModel, $this->User);
-			$isUserAdmin = $checkAuthService->isUserAdmin($calendarModel, $this->User);
-
-			$authorizedElapsedEvents = $checkAuthService->isUserAuthorizedElapsedEvents($calendarModel, $this->User);
-			$areEditLinksAllowed = $checkAuthService->areEditLinksAllowed($calendarModel, $objEvent->row(), $this->User->id, $isUserAdmin, $isUserAuthorized);
+			$authorizedElapsedEvents = $this->checkAuthService->isUserAuthorizedElapsedEvents($calendarModel, $this->User);
+			$areEditLinksAllowed = $this->checkAuthService->areEditLinksAllowed($calendarModel, $objEvent->row(), $this->User->id, $isUserAdmin, $isUserAuthorized);
 
             $strUrl = '';
 			if ($areEditLinksAllowed) {

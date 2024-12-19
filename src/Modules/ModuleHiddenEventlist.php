@@ -10,19 +10,52 @@ use Contao\StringUtil;
 use Contao\ModuleEventlist;
 use Contao\PageModel;
 use Contao\CoreBundle\Routing\ScopeMatcher;
+use Contao\System;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleHiddenEventlist extends ModuleEventlist
 {
-    public function __construct(private ScopeMatcher $scopeMatcher){
+    private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
+    private RequestStack $requestStack; // Dependency Injection für RequestStack
+
+    protected function initializeServices(): void
+    {
+        $container = System::getContainer();
+        $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
+        $this->requestStack = $container->get('request_stack');
+    }
+    /**
+     * Check if the current request is a backend request
+     */
+    public function isBackend(): bool
+    {
+        // Fallback: Initialisiere RequestStack, falls es nicht gesetzt ist
+        if (!isset($this->requestStack)) {
+            $this->requestStack = System::getContainer()->get('request_stack');
+        }
+
+        $currentRequest = $this->requestStack->getCurrentRequest();
+
+        if (null === $currentRequest) {
+            return false; // Keine aktuelle Anfrage
+        }
+
+        return $this->scopeMatcher->isBackendRequest($currentRequest);
     }
 
-    public function isBackend() {
-        return $this->scopeMatcher->isBackendRequest();
-    }
+    /**
+     * Check if the current request is a frontend request
+     */
+    public function isFrontend(): bool
+    {
+        $currentRequest = $this->requestStack->getCurrentRequest();
 
-    public function isFrontend() {
-        return $this->scopeMatcher->isFrontendRequest();
+        // Sicherstellen, dass die aktuelle Anfrage existiert
+        if (null === $currentRequest) {
+            return false; // Annahme: Kein Request => kein Frontend
+        }
+
+        return $this->scopeMatcher->isFrontendRequest($currentRequest);
     }
     /**
      * Current date object
@@ -137,6 +170,8 @@ class ModuleHiddenEventlist extends ModuleEventlist
      */
     public function generate()
     {
+        $this->initializeServices();
+
         if ($this->isBackend()) {
             $objTemplate = new BackendTemplate('be_wildcard');
 

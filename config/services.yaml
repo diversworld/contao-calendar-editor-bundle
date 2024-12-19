@@ -1,22 +1,17 @@
 services:
   _defaults:
-    autoconfigure: true
     autowire: true
+    autoconfigure: true
+    public: false
 
   _instanceof:
     Contao\CoreBundle\Framework\FrameworkAwareInterface:
       calls:
         - [ setFramework, [ '@contao.framework' ] ]
 
-    Symfony\Bundle\FrameworkBundle\Controller\AbstractController:
-      calls:
-        - [ setContainer, [ '@Psr\Container\ContainerInterface' ] ]
-
     Symfony\Component\DependencyInjection\ContainerAwareInterface:
       calls:
         - [ setContainer, [ '@service_container' ] ]
 
-
-  caledit.service.auth:
-    class: Diversworld\CalendarEditorBundle\Services\CheckAuthService
+  Diversworld\CalendarEditorBundle\Services\CheckAuthService:
     public: true

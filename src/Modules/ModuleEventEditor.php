@@ -5,6 +5,7 @@ namespace Diversworld\CalendarEditorBundle\Modules;
 use Contao\BackendTemplate;
 use Contao\CoreBundle\Routing\ScopeMatcher;
 use Contao\Email;
+use Contao\FrontendUser;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
@@ -28,15 +29,43 @@ class ModuleEventEditor extends Events
     protected string $errorString = '';
     protected array $allowedCalendars = [];
 
-    public function __construct(private ScopeMatcher $scopeMatcher){
+    private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
+    private RequestStack $requestStack; // Dependency Injection für RequestStack
+
+    protected function initializeServices(): void
+    {
+        $container = System::getContainer();
+        $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
+        $this->requestStack = $container->get('request_stack');
+        $this->checkAuthService = System::getContainer()->get(CheckAuthService::class);
+    }
+    /**
+     * Check if the current request is a backend request
+     */
+    public function isBackend(): bool
+    {
+        $currentRequest = $this->requestStack->getCurrentRequest();
+
+        if (null === $currentRequest) {
+            return false; // Keine aktuelle Anfrage
+        }
+
+        return $this->scopeMatcher->isBackendRequest($currentRequest);
     }
 
-    public function isBackend() {
-        return $this->scopeMatcher->isBackendRequest();
-    }
+    /**
+     * Check if the current request is a frontend request
+     */
+    public function isFrontend(): bool
+    {
+        $currentRequest = $this->requestStack->getCurrentRequest();
 
-    public function isFrontend() {
-        return $this->scopeMatcher->isFrontendRequest();
+        // Sicherstellen, dass die aktuelle Anfrage existiert
+        if (null === $currentRequest) {
+            return false; // Annahme: Kein Request => kein Frontend
+        }
+
+        return $this->scopeMatcher->isFrontendRequest($currentRequest);
     }
 
     /**
@@ -44,6 +73,8 @@ class ModuleEventEditor extends Events
      */
     public function generate()
     {
+        $this->initializeServices();
+
         if ($this->isBackend()) {
             $objTemplate = new BackendTemplate('be_wildcard');
             $objTemplate->wildcard = '### EVENT EDITOR ###';
@@ -105,6 +136,8 @@ class ModuleEventEditor extends Events
     public function getCalendars($user): array
     {
         /** @var CheckAuthService $checkAuthService */
+        $this->initializeServices();
+
         // get all the calendars supported by this module
         $calendarModels = CalendarModelEdit::findByIds($this->cal_calendar);
         // Check these calendars, whether the current user is allowed to edit them
@@ -116,7 +149,7 @@ class ModuleEventEditor extends Events
         } else {
             // fill the Allowed-Calendars-Array with proper calendars
             foreach ($calendarModels as $calendarModel) {
-                if (System::getContainer()->get('caledit.service.auth')->isUserAuthorized($calendarModel, $user)) {
+                if ($this->checkAuthService->isUserAuthorized($calendarModel, $user)) {
                     $calendars[] = $calendarModel;
                 }
             }
@@ -140,19 +173,20 @@ class ModuleEventEditor extends Events
 
     public function UserIsToAddCalendar($user, $pid)
     {
+        $this->initializeServices();
+
         $objCalendar = $this->getCalendarObjectFromPID($pid);
+
         if (NULL === $objCalendar) {
             return false;
         } else {
-            /** @var CheckAuthService $checkAuthService */
-            return System::getContainer()->get('caledit.service.auth')->isUserAuthorized($objCalendar, $user);
+            return $this->checkAuthService->isUserAuthorized($objCalendar, $user);
         }
     }
 
     public function checkValidDate($calendarID, $objStart, $objEnd)
     {
-        /** @var CheckAuthService $checkAuthService */
-        $checkAuthService = System::getContainer()->get('caledit.service.auth');
+        $this->initializeServices();
 
         $objCalendar = $this->getCalendarObjectFromPID($calendarID);
         if (NULL === $objCalendar) {
@@ -162,18 +196,18 @@ class ModuleEventEditor extends Events
         $tmpEndDate = strtotime($objEnd->__get('value'));
         if ($tmpEndDate === false) $tmpEndDate = null;
 
-        if ((!$objCalendar->caledit_onlyFuture) || $checkAuthService->isUserAdmin($objCalendar, $this->User)) {
+        if ((!$objCalendar->caledit_onlyFuture) || $this->checkAuthService->isUserAdmin($objCalendar, $this->User)) {
             // elapsed events can be edited, or user is an admin
             return true;
         } else {
             // editing elapsed events is denied and user is not an admin
             //$isValid = ($newDate >= time());
-            $isValid = $checkAuthService->isDateNotElapsed($tmpStartDate, $tmpEndDate);
+            $isValid = $this->checkAuthService->isDateNotElapsed($tmpStartDate, $tmpEndDate);
             if (!$isValid) {
-                if (!$tmpEndDate && ($checkAuthService->getMidnightTime() > $tmpStartDate)) {
+                if (!$tmpEndDate && ($this->checkAuthService->getMidnightTime() > $tmpStartDate)) {
                     $objStart->addError($GLOBALS['TL_LANG']['MSC']['caledit_formErrorElapsedDate']);
                 }
-                if ($tmpEndDate && ($checkAuthService->getMidnightTime() > $tmpEndDate)) {
+                if ($tmpEndDate && ($this->checkAuthService->getMidnightTime() > $tmpEndDate)) {
                     $objEnd->addError($GLOBALS['TL_LANG']['MSC']['caledit_formErrorElapsedDate']);
                 }
             }
@@ -183,12 +217,14 @@ class ModuleEventEditor extends Events
 
     public function allDatesAllowed($calendarID)
     {
+        $this->initializeServices();
+
         $objCalendar = $this->getCalendarObjectFromPID($calendarID);
         if (NULL === $objCalendar) {
             return false;
         }
 
-        if ((!$objCalendar->caledit_onlyFuture) || (System::getContainer()->get('caledit.service.auth')->isUserAdmin($objCalendar, $this->User))) {
+        if ((!$objCalendar->caledit_onlyFuture) || ($this->checkAuthService->isUserAdmin($objCalendar, $this->User))) {
             // elapsed events can be edited, or user is an admin
             return true;
         } else {
@@ -207,8 +243,7 @@ class ModuleEventEditor extends Events
      */
     public function checkUserEditRights($user, $eventID, $currentObjectData): bool
     {
-        /** @var CheckAuthService $checkAuthService */
-        $checkAuthService = System::getContainer()->get('caledit.service.auth');
+        $this->initializeServices();
 
         // if no event is specified: ok, FE user can add new events :D
         if (!$eventID) {
@@ -226,24 +261,25 @@ class ModuleEventEditor extends Events
         }
 
         // check calendar settings
-        if ($checkAuthService->isUserAuthorized($objCalendar, $user)) {
+        if ($this->checkAuthService->isUserAuthorized($objCalendar, $user)) {
             // if the editing is disabled in the BE: Deny editing in the FE
             if ($currentObjectData->disable_editing) {
                 $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_DisabledEvent'];
                 return false;
             }
 
-            $userIsAdmin = $checkAuthService->isUserAdmin($objCalendar, $user);
+            $userIsAdmin = $this->checkAuthService->isUserAdmin($objCalendar, $user);
             //if (!$userIsAdmin && ($CurrentObjectData->startTime <= time()) && ($objCalendar->caledit_onlyFuture)){
             if (!$userIsAdmin
-                && (!$checkAuthService->isDateNotElapsed($currentObjectData->startTime, $currentObjectData->endTime))
+                && (!$this->checkAuthService->isDateNotElapsed($currentObjectData->startTime, $currentObjectData->endTime))
                 //($CurrentObjectData->startTime <= time())
                 && ($objCalendar->caledit_onlyFuture)) {
                 $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_NoPast'];
                 return false;
             }
+            $hasFrontendUser =  System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
 
-            $result = ((!$objCalendar->caledit_onlyUser) || ((FE_USER_LOGGED_IN) && ($userIsAdmin || ($user->id == $currentObjectData->fe_user))));
+            $result = ((!$objCalendar->caledit_onlyUser) || (($hasFrontendUser) && ($userIsAdmin || ($user->id == $currentObjectData->fe_user))));
             if (!$result) {
                 $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_OnlyUser'];
             }
@@ -770,7 +806,9 @@ class ModuleEventEditor extends Events
             $fields['saveAs']['options']['1'] = $GLOBALS['TL_LANG']['MSC']['caledit_saveAs'];
         }
 
-        if (!FE_USER_LOGGED_IN) {
+        $hasFrontendUser =  System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
+
+        if (!$hasFrontendUser) {
             $fields['captcha'] = [
                 'name' => 'captcha',
                 'inputType' => 'captcha',
@@ -855,10 +893,12 @@ class ModuleEventEditor extends Events
         $this->Template->submit = $GLOBALS['TL_LANG']['MSC']['caledit_saveData'];
         $this->Template->calendars = $this->allowedCalendars;
 
+        $hasFrontendUser =  System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
+
         if ((!$doNotSubmit) && ($this->Input->post('FORM_SUBMIT') == 'caledit_submit')) {
             // everything seems to be ok, so we can add the POST Data
             // into the Database
-            if (!FE_USER_LOGGED_IN) {
+            if (!$hasFrontendUser) {
                 $newEventData['fe_user'] = ''; // no user
             } else {
                 $newEventData['fe_user'] = $this->User->id; // set the FE_user here
@@ -1087,7 +1127,9 @@ class ModuleEventEditor extends Events
             }
         }
 
-        if (!FE_USER_LOGGED_IN) {
+        $hasFrontendUser =  System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
+
+        if (!$hasFrontendUser) {
             $fields['captcha'] = [
                 'name' => 'captcha',
                 'inputType' => 'captcha',
@@ -1297,7 +1339,6 @@ class ModuleEventEditor extends Events
         }
     }
 
-
     /**
      * Generate module
      */
@@ -1305,26 +1346,35 @@ class ModuleEventEditor extends Events
     {
         // Add TinyMCE-Stuff to header
         $this->addTinyMCE($this->caledit_tinMCEtemplate);
-        // Check for "add" or "edit"
 
-        $editID = $this->Input->get('edit');
+        // Services initialisieren
+        $this->initializeServices();
 
-        $deleteID = $this->Input->get('delete');
+        // Input über den Symfony-DI-Container beziehen
+        $requestStack = System::getContainer()->get('request_stack');
+        $currentRequest = $requestStack->getCurrentRequest();
+
+        if ($currentRequest === null) {
+            throw new \RuntimeException('No current request available.');
+        }
+
+        $editID = $currentRequest->query->get('edit');
+        $deleteID = $currentRequest->query->get('delete');
         if ($deleteID) {
             $editID = $deleteID;
         }
 
-        $cloneID = $this->Input->get('clone');
+        $cloneID = $currentRequest->query->get('clone');
         if ($cloneID) {
             $editID = $cloneID;
         }
 
-        $fatalError = False;
+        $fatalError = false;
 
-        $this->import('FrontendUser', 'User');
+        $this->User = FrontendUser::getInstance();
         $this->allowedCalendars = $this->getCalendars($this->User);
-        if (count($this->allowedCalendars) == 0) {
-            $fatalError = True;
+        if (count($this->allowedCalendars) === 0) {
+            $fatalError = true;
             $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
         } else {
             $currentEventObject = CalendarEventsModelEdit::findByIdOrAlias($editID);
@@ -1332,7 +1382,7 @@ class ModuleEventEditor extends Events
             $AuthorizedUser = (bool)$this->checkUserEditRights($this->User, $editID, $currentEventObject);
             if (!$AuthorizedUser) {
                 // a proper ErrorString is set in checkUserEditRights
-                $fatalError = True;
+                $fatalError = true;
             }
         }
 
@@ -1356,8 +1406,6 @@ class ModuleEventEditor extends Events
         }
 
         $this->handleEdit($editID, $currentEventObject);
-        return;
-
     }
 }
 

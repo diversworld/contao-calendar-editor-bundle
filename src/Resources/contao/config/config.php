@@ -31,4 +31,5 @@ $GLOBALS['FE_MOD']['events']['EventEditor']         = ModuleEventEditor::class;
 $GLOBALS['FE_MOD']['events']['EventReaderEditLink'] = ModuleEventReaderEdit::class;
 $GLOBALS['FE_MOD']['events']['EventHiddenList']     = ModuleHiddenEventlist::class;
 
-$GLOBALS['TL_HOOKS']['getAllEvents'][] = [ListAllEventsHook::class, 'updateAllEvents'];
+//$GLOBALS['TL_HOOKS']['getAllEvents'][] = [ListAllEventsHook::class, 'updateAllEvents'];
+$GLOBALS['TL_HOOKS']['listAllEvents'][] = ['Diversworld\CalendarEditorBundle\Hooks\ListAllEventsHook', 'onListAllEvents'];

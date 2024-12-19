@@ -4,6 +4,7 @@ namespace Diversworld\CalendarEditorBundle\Modules;
 
 use Contao\BackendTemplate;
 use Contao\Date;
+use Contao\FrontendUser;
 use Contao\PageModel;
 use Contao\StringUtil;
 use Contao\System;
@@ -11,6 +12,7 @@ use Diversworld\CalendarEditorBundle\Models\CalendarModelEdit;
 use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Contao\ModuleCalendar;
 use Contao\CoreBundle\Routing\ScopeMatcher;
+use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleCalenderEdit extends ModuleCalendar
@@ -19,15 +21,49 @@ class ModuleCalenderEdit extends ModuleCalendar
 	protected bool $allowElapsedEvents;
 	protected bool $allowEditEvents;
 
-	public function __construct(private ScopeMatcher $scopeMatcher){
+    private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
+    private RequestStack $requestStack; // Dependency Injection für RequestStack
+    private CheckAuthService $checkAuthService;
+
+    protected function initializeServices(): void
+    {
+        $container = System::getContainer();
+        $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
+        $this->requestStack = $container->get('request_stack');
+        $this->checkAuthService = System::getContainer()->get(CheckAuthService::class);
+    }
+    /**
+     * Check if the current request is a backend request
+     */
+    public function isBackend(): bool
+    {
+        // Fallback: Initialisiere RequestStack, falls es nicht gesetzt ist
+        if (!isset($this->requestStack)) {
+            $this->requestStack = System::getContainer()->get('request_stack');
+        }
+
+        $currentRequest = $this->requestStack->getCurrentRequest();
+
+        if (null === $currentRequest) {
+            return false; // Keine aktuelle Anfrage
+        }
+
+        return $this->scopeMatcher->isBackendRequest($currentRequest);
     }
 
-    public function isBackend() {
-        return $this->scopeMatcher->isBackendRequest();
-    }
+    /**
+     * Check if the current request is a frontend request
+     */
+    public function isFrontend(): bool
+    {
+        $currentRequest = $this->requestStack->getCurrentRequest();
 
-    public function isFrontend() {
-        return $this->scopeMatcher->isFrontendRequest();
+        // Sicherstellen, dass die aktuelle Anfrage existiert
+        if (null === $currentRequest) {
+            return false; // Annahme: Kein Request => kein Frontend
+        }
+
+        return $this->scopeMatcher->isFrontendRequest($currentRequest);
     }
 
 	public function getHolidayCalendarIDs($cals): array
@@ -45,16 +81,17 @@ class ModuleCalenderEdit extends ModuleCalendar
 	// check whether the current FE User is allowed to edit any of the calendars
 	public function checkUserAuthorizations($arrCalendars): void
     {
-        /** @var CheckAuthService $checkAuthService */
-        $checkAuthService = System::getContainer()->get('caledit.service.auth');
-		$this->import('FrontendUser', 'User');
+        $this->initializeServices();
+
+        $this->User = FrontendUser::getInstance();
+
 		$this->allowElapsedEvents = false;
 		$this->allowEditEvents = false;
 
 		$calendarModels = CalendarModelEdit::findByIds($arrCalendars);
 		foreach($calendarModels as $calendarModel) {
-			$this->allowElapsedEvents = ($this->allowElapsedEvents || $checkAuthService->isUserAuthorizedElapsedEvents($calendarModel, $this->User) );
-			$this->allowEditEvents    = ($this->allowEditEvents    || $checkAuthService->isUserAuthorized($calendarModel, $this->User) );
+			$this->allowElapsedEvents = ($this->allowElapsedEvents || $this->checkAuthService->isUserAuthorizedElapsedEvents($calendarModel, $this->User) );
+			$this->allowEditEvents    = ($this->allowEditEvents    || $this->checkAuthService->isUserAuthorized($calendarModel, $this->User) );
 		}
 	}
 
@@ -177,6 +214,8 @@ class ModuleCalenderEdit extends ModuleCalendar
 
 	public function generate(): string
     {
+        $this->initializeServices();
+
         if ($this->isBackend()) {
             $objTemplate = new BackendTemplate('be_wildcard');
 
@@ -191,7 +230,6 @@ class ModuleCalenderEdit extends ModuleCalendar
 
         return parent::generate();
     }
-
 
 	/**
 	 * Generate module
