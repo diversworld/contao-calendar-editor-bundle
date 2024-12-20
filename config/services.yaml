@@ -4,6 +4,21 @@ services:
     autoconfigure: true
     public: false
 
+  Diversworld\CalendarEditorBundle\Modules\ModuleCalenderEdit:
+    calls:
+      - [ setCheckAuthService, [ '@Diversworld\CalendarEditorBundle\Services\CheckAuthService' ] ]
+
+  Diversworld\CalendarEditorBundle\Services\CheckAuthService:
+    autowire: true
+    autoconfigure: true
+    public: true
+
+  monolog.logger.contao.general:
+    class: Monolog\Logger
+    arguments: ['contao.general']
+    tags:
+      - { name: monolog.logger, channel: contao.general }
+
   _instanceof:
     Contao\CoreBundle\Framework\FrameworkAwareInterface:
       calls:
@@ -12,6 +27,3 @@ services:
     Symfony\Component\DependencyInjection\ContainerAwareInterface:
       calls:
         - [ setContainer, [ '@service_container' ] ]
-
-  Diversworld\CalendarEditorBundle\Services\CheckAuthService:
-    public: true

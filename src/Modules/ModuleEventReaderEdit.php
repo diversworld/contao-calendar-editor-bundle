@@ -3,6 +3,7 @@
 namespace Diversworld\CalendarEditorBundle\Modules;
 
 use Contao\BackendTemplate;
+use Contao\CalendarEventsModel;
 use Contao\Events;
 use Contao\FrontendUser;
 use Contao\Input;
@@ -16,31 +17,41 @@ use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleEventReaderEdit extends Events
 {
+    /**
+     * Template
+     * @var string
+     */
+    protected $strTemplate = 'mod_event_ReaderEditLink';
+
     private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
     private RequestStack $requestStack; // Dependency Injection für RequestStack
+
+    private ?CheckAuthService $checkAuthService = null;
+
+    public function setCheckAuthService(CheckAuthService $checkAuthService): void
+    {
+        System::log('setCheckAuthService called successfully', __METHOD__, TL_GENERAL);
+        $this->checkAuthService = $checkAuthService;
+    }
 
     protected function initializeServices(): void
     {
         $container = System::getContainer();
+
+        if ($this->checkAuthService === null) {
+            $this->checkAuthService = $container->get('Diversworld\CalendarEditorBundle\Services\CheckAuthService');
+        }
+
         $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
         $this->requestStack = $container->get('request_stack');
-        $this->checkAuthService = System::getContainer()->get(CheckAuthService::class);
+        //$this->checkAuthService = $container->get(CheckAuthService::class);
     }
     /**
      * Check if the current request is a backend request
      */
     public function isBackend(): bool
     {
-        // Fallback: Initialisiere RequestStack, falls es nicht gesetzt ist
-        if (!isset($this->requestStack)) {
-            $this->requestStack = System::getContainer()->get('request_stack');
-        }
-
         $currentRequest = $this->requestStack->getCurrentRequest();
-
-        if (null === $currentRequest) {
-            return false; // Keine aktuelle Anfrage
-        }
 
         return $this->scopeMatcher->isBackendRequest($currentRequest);
     }
@@ -52,19 +63,8 @@ class ModuleEventReaderEdit extends Events
     {
         $currentRequest = $this->requestStack->getCurrentRequest();
 
-        // Sicherstellen, dass die aktuelle Anfrage existiert
-        if (null === $currentRequest) {
-            return false; // Annahme: Kein Request => kein Frontend
-        }
-
         return $this->scopeMatcher->isFrontendRequest($currentRequest);
     }
-
-	/**
-	 * Template
-	 * @var string
-	 */
-	protected $strTemplate = 'mod_event_ReaderEditLink';
 
 	/**
 	 * Display a wildcard in the back end
@@ -72,9 +72,9 @@ class ModuleEventReaderEdit extends Events
 	 */
 	public function generate()
 	{
-        $this->initializeServices();
+        $request = System::getContainer()->get('request_stack')->getCurrentRequest();
 
-		if ($this->isBackend()) {
+        if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request)){
 			$objTemplate = new BackendTemplate('be_wildcard');
 
 			$objTemplate->wildcard = '### EVENT READER EDIT LINK ###';
@@ -101,99 +101,110 @@ class ModuleEventReaderEdit extends Events
 		return parent::generate();
 	}
 
-	protected function compile(): void
+    protected function compile(): void
     {
-        $this->initializeServices();
+        $this->Template = new FrontendTemplate($this->strTemplate);
+        $this->Template->editRef = '';
 
-		$this->Template = new FrontendTemplate($this->strTemplate);
-		$this->Template->editRef = '';
-
-		// FE user is logged in
-        $this->initializeServices();
-
-        $this->User = FrontendUser::getInstance();
+        // Token checker service
         $time = time();
 
-		// Get current event
-		$objEvent = $this->Database->prepare("SELECT *, author AS authorId, (SELECT title FROM tl_calendar WHERE tl_calendar.id=tl_calendar_events.pid) AS calendar, (SELECT name FROM tl_user WHERE id=author) author FROM tl_calendar_events WHERE pid IN(" . implode(',', array_map('intval', $this->cal_calendar)) . ") AND (id=? OR alias=?)" . (!BE_USER_LOGGED_IN ? " AND (start='' OR start<?) AND (stop='' OR stop>?) AND published=1" : ""))
-								   ->limit(1)
-								   ->execute((is_numeric(Input::get('events')) ? Input::get('events') : 0), Input::get('events'), $time, $time);
+        // Check if backend user is logged in
+        $backendUser = BackendUser::getInstance();
 
-		if ($objEvent->numRows < 1) {
-			$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
-			$this->Template->error_class = 'error';
-			return;
-		}
+        System::getContainer()->get('monolog.logger.contao.general')->info('BackendUser ' . $backendUser . ' ');
 
-		// get Calender with PID
+        // Get the current event
+        $objEvent = CalendarEventsModel::findPublishedByParentAndIdOrAlias(Input::get('auto_item'), $this->cal_calendar);
+
+        if ($objEvent->numRows < 1) {
+            $this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
+            $this->Template->error_class = 'error';
+            return;
+        }
+
+        // Get calendar with PID
         $calendarModel = CalendarModelEdit::findByPk($objEvent->pid);
 
+        if ($calendarModel === null) {
+            return;
+        }
 
-		if ($calendarModel === null) {
-			return;
-		}
+        if ($calendarModel->AllowEdit) {
+            // Calendar allows editing
+            $checkAuth = System::getContainer()->get(CheckAuthService::class);
+            if (!$checkAuth instanceof CheckAuthService) {
+                throw new \RuntimeException('Invalid API service.');
+            }
+            $this->checkAutService = $checkAuth;
 
-		if ($calendarModel->AllowEdit) {
-			// Calendar allows editing
-			// check user rights
-			$isUserAuthorized = $this->checkAuthService->isUserAuthorized($calendarModel, $this->User);
-			$isUserAdmin = $this->checkAuthService->isUserAdmin($calendarModel, $this->User);
+            $isUserAuthorized = $this->checkAuthService->isUserAuthorized($calendarModel, $this->User);
+            $isUserAdmin = $this->checkAuthService->isUserAdmin($calendarModel, $this->User);
 
-			$authorizedElapsedEvents = $this->checkAuthService->isUserAuthorizedElapsedEvents($calendarModel, $this->User);
-			$areEditLinksAllowed = $this->checkAuthService->areEditLinksAllowed($calendarModel, $objEvent->row(), $this->User->id, $isUserAdmin, $isUserAuthorized);
+            $authorizedElapsedEvents = $this->checkAuthService->isUserAuthorizedElapsedEvents($calendarModel, $this->User);
+            $areEditLinksAllowed = $this->checkAuthService->areEditLinksAllowed(
+                $calendarModel,
+                $objEvent->row(),
+                $this->User->id,
+                $isUserAdmin,
+                $isUserAuthorized
+            );
 
             $strUrl = '';
-			if ($areEditLinksAllowed) {
-				// get the JumpToEdit-Page for this calendar
-				$objPage = $this->Database->prepare("SELECT * FROM tl_page WHERE id=(SELECT caledit_jumpTo FROM tl_calendar WHERE id=?)")
-								  ->limit(1)
-								  ->execute($calendarModel->id);
-				if ($objPage->numRows) {
-					$strUrl = $this->generateFrontendUrl($objPage->row(), '');
-				}
+            if ($areEditLinksAllowed) {
+                // Get the JumpToEdit page for this calendar
+                $objPage = $this->Database->prepare(
+                    "SELECT * FROM tl_page WHERE id=(SELECT caledit_jumpTo FROM tl_calendar WHERE id=?)"
+                )->limit(1)
+                    ->execute($calendarModel->id);
 
-				$this->Template->editRef = $strUrl.'?edit='.$objEvent->id;
-				$this->Template->editLabel = $GLOBALS['TL_LANG']['MSC']['caledit_editLabel'];
-				$this->Template->editTitle = $GLOBALS['TL_LANG']['MSC']['caledit_editTitle'];
+                if ($objPage->numRows) {
+                    $strUrl = $this->generateFrontendUrl($objPage->row(), '');
+                }
 
-				if ($this->caledit_showCloneLink) {
-					$this->Template->cloneRef = $strUrl.'?clone='.$objEvent->id;
-					$this->Template->cloneLabel = $GLOBALS['TL_LANG']['MSC']['caledit_cloneLabel'];
-					$this->Template->cloneTitle = $GLOBALS['TL_LANG']['MSC']['caledit_cloneTitle'];
-				}
-				if ($this->caledit_showDeleteLink) {
-					$this->Template->deleteRef = $strUrl.'?delete='.$objEvent->id;
-					$this->Template->deleteLabel = $GLOBALS['TL_LANG']['MSC']['caledit_deleteLabel'];
-					$this->Template->deleteTitle = $GLOBALS['TL_LANG']['MSC']['caledit_deleteTitle'];
-				}
+                $this->Template->editRef = $strUrl . '?edit=' . $objEvent->id;
+                $this->Template->editLabel = $GLOBALS['TL_LANG']['MSC']['caledit_editLabel'];
+                $this->Template->editTitle = $GLOBALS['TL_LANG']['MSC']['caledit_editTitle'];
 
-			} else {
-				if (!$isUserAuthorized) {
-					$this->Template->error_class = 'error';
-					$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_UnauthorizedUser'];
-					return;
-				}
+                if ($this->caledit_showCloneLink) {
+                    $this->Template->cloneRef = $strUrl . '?clone=' . $objEvent->id;
+                    $this->Template->cloneLabel = $GLOBALS['TL_LANG']['MSC']['caledit_cloneLabel'];
+                    $this->Template->cloneTitle = $GLOBALS['TL_LANG']['MSC']['caledit_cloneTitle'];
+                }
+                if ($this->caledit_showDeleteLink) {
+                    $this->Template->deleteRef = $strUrl . '?delete=' . $objEvent->id;
+                    $this->Template->deleteLabel = $GLOBALS['TL_LANG']['MSC']['caledit_deleteLabel'];
+                    $this->Template->deleteTitle = $GLOBALS['TL_LANG']['MSC']['caledit_deleteTitle'];
+                }
 
-				if ($objEvent->disable_editing) {
-					// the event is locked in the backend
-					$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_DisabledEvent'];
-					$this->Template->error_class = 'error';
-				} else {
-					if (!$authorizedElapsedEvents) {
-						// the user is authorized, but the event has elapsed
-						$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_NoPast'];
+            } else {
+                if (!$isUserAuthorized) {
+                    $this->Template->error_class = 'error';
+                    $this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_UnauthorizedUser'];
+                    return;
+                }
+
+                if ($objEvent->disable_editing) {
+                    // Event is locked in the backend
+                    $this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_DisabledEvent'];
+                    $this->Template->error_class = 'error';
+                } else {
+                    if (!$authorizedElapsedEvents) {
+                        // User is authorized, but event has elapsed
+                        $this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_NoPast'];
                     } else {
-						// the user is NOT authorized at all (reason: only the creator can edit it)
-						$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_OnlyUser'];
+                        // User is NOT authorized at all (e.g., only the creator can edit it)
+                        $this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_OnlyUser'];
                     }
                     $this->Template->error_class = 'error';
                 }
-			}
-		} else {
-			$this->Template->error_class = 'error';
-			$this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
-		}
-	}
+            }
+        } else {
+            $this->Template->error_class = 'error';
+            $this->Template->error = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
+        }
+    }
+
 }
 
 ?>

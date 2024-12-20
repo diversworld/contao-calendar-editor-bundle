@@ -3,6 +3,7 @@
 namespace Diversworld\CalendarEditorBundle\Modules;
 
 use Contao\BackendTemplate;
+use Contao\CalendarEventsModel;
 use Contao\CoreBundle\Routing\ScopeMatcher;
 use Contao\Email;
 use Contao\FrontendUser;
@@ -16,6 +17,7 @@ use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Contao\Date;
 use Contao\Events;
 use Contao\FrontendTemplate;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleEventEditor extends Events
@@ -31,13 +33,31 @@ class ModuleEventEditor extends Events
 
     private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
     private RequestStack $requestStack; // Dependency Injection für RequestStack
+    private LoggerInterface $logger;
+
+    private ?CheckAuthService $checkAuthService = null;
+
+    public function setCheckAuthService(CheckAuthService $checkAuthService): void
+    {
+        System::log('setCheckAuthService called successfully', __METHOD__, TL_GENERAL);
+        $this->checkAuthService = $checkAuthService;
+    }
+
+    protected function initializeLogger(): void
+    {
+        $this->logger = System::getContainer()->get('monolog.logger.contao.general');
+    }
 
     protected function initializeServices(): void
     {
         $container = System::getContainer();
+
+        if ($this->checkAuthService === null) {
+            $this->checkAuthService = $container->get('Diversworld\CalendarEditorBundle\Services\CheckAuthService');
+        }
+
         $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
         $this->requestStack = $container->get('request_stack');
-        $this->checkAuthService = System::getContainer()->get(CheckAuthService::class);
     }
     /**
      * Check if the current request is a backend request
@@ -45,10 +65,6 @@ class ModuleEventEditor extends Events
     public function isBackend(): bool
     {
         $currentRequest = $this->requestStack->getCurrentRequest();
-
-        if (null === $currentRequest) {
-            return false; // Keine aktuelle Anfrage
-        }
 
         return $this->scopeMatcher->isBackendRequest($currentRequest);
     }
@@ -60,11 +76,6 @@ class ModuleEventEditor extends Events
     {
         $currentRequest = $this->requestStack->getCurrentRequest();
 
-        // Sicherstellen, dass die aktuelle Anfrage existiert
-        if (null === $currentRequest) {
-            return false; // Annahme: Kein Request => kein Frontend
-        }
-
         return $this->scopeMatcher->isFrontendRequest($currentRequest);
     }
 
@@ -74,8 +85,9 @@ class ModuleEventEditor extends Events
     public function generate()
     {
         $this->initializeServices();
+        $request = $this->requestStack->getCurrentRequest();
 
-        if ($this->isBackend()) {
+        if ($this->scopeMatcher->isBackendRequest($request)) {
             $objTemplate = new BackendTemplate('be_wildcard');
             $objTemplate->wildcard = '### EVENT EDITOR ###';
             $objTemplate->title = $this->headline;
@@ -135,9 +147,6 @@ class ModuleEventEditor extends Events
      */
     public function getCalendars($user): array
     {
-        /** @var CheckAuthService $checkAuthService */
-        $this->initializeServices();
-
         // get all the calendars supported by this module
         $calendarModels = CalendarModelEdit::findByIds($this->cal_calendar);
         // Check these calendars, whether the current user is allowed to edit them
@@ -173,8 +182,6 @@ class ModuleEventEditor extends Events
 
     public function UserIsToAddCalendar($user, $pid)
     {
-        $this->initializeServices();
-
         $objCalendar = $this->getCalendarObjectFromPID($pid);
 
         if (NULL === $objCalendar) {
@@ -186,8 +193,6 @@ class ModuleEventEditor extends Events
 
     public function checkValidDate($calendarID, $objStart, $objEnd)
     {
-        $this->initializeServices();
-
         $objCalendar = $this->getCalendarObjectFromPID($calendarID);
         if (NULL === $objCalendar) {
             return false;
@@ -217,8 +222,6 @@ class ModuleEventEditor extends Events
 
     public function allDatesAllowed($calendarID)
     {
-        $this->initializeServices();
-
         $objCalendar = $this->getCalendarObjectFromPID($calendarID);
         if (NULL === $objCalendar) {
             return false;
@@ -243,8 +246,6 @@ class ModuleEventEditor extends Events
      */
     public function checkUserEditRights($user, $eventID, $currentObjectData): bool
     {
-        $this->initializeServices();
-
         // if no event is specified: ok, FE user can add new events :D
         if (!$eventID) {
             return true;
@@ -1344,6 +1345,8 @@ class ModuleEventEditor extends Events
      */
     protected function compile()
     {
+        $this->initializeLogger();
+        $this->logger->info('ModuleEventEdit compile()');
         // Add TinyMCE-Stuff to header
         $this->addTinyMCE($this->caledit_tinMCEtemplate);
 
@@ -1372,14 +1375,17 @@ class ModuleEventEditor extends Events
         $fatalError = false;
 
         $this->User = FrontendUser::getInstance();
+        $this->logger->info('ModuleEventEdit User: ' . $this->User->username);
         $this->allowedCalendars = $this->getCalendars($this->User);
+        $this->logger->info('ModuleEventEdit allowedCalendars: ' . print_r($this->allowedCalendars, true));
         if (count($this->allowedCalendars) === 0) {
             $fatalError = true;
             $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
         } else {
-            $currentEventObject = CalendarEventsModelEdit::findByIdOrAlias($editID);
-
+            //$currentEventObject = CalendarEventsModelEdit::findByIdOrAlias($editID);
+            $currentEventObject = CalendarEventsModel::findByIdOrAlias($editID);
             $AuthorizedUser = (bool)$this->checkUserEditRights($this->User, $editID, $currentEventObject);
+            $this->logger->info('ModuleEventEdit AuthorizedUser: ' . $AuthorizedUser);
             if (!$AuthorizedUser) {
                 // a proper ErrorString is set in checkUserEditRights
                 $fatalError = true;

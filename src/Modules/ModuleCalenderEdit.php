@@ -23,47 +23,24 @@ class ModuleCalenderEdit extends ModuleCalendar
 
     private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
     private RequestStack $requestStack; // Dependency Injection für RequestStack
-    private CheckAuthService $checkAuthService;
+    private ?CheckAuthService $checkAuthService = null;
+
+    public function setCheckAuthService(CheckAuthService $checkAuthService): void
+    {
+        System::log('setCheckAuthService called successfully', __METHOD__, TL_GENERAL);
+        $this->checkAuthService = $checkAuthService;
+    }
 
     protected function initializeServices(): void
     {
         $container = System::getContainer();
+
+        if ($this->checkAuthService === null) {
+            $this->checkAuthService = $container->get('Diversworld\CalendarEditorBundle\Services\CheckAuthService');
+        }
+
         $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
         $this->requestStack = $container->get('request_stack');
-        $this->checkAuthService = System::getContainer()->get(CheckAuthService::class);
-    }
-    /**
-     * Check if the current request is a backend request
-     */
-    public function isBackend(): bool
-    {
-        // Fallback: Initialisiere RequestStack, falls es nicht gesetzt ist
-        if (!isset($this->requestStack)) {
-            $this->requestStack = System::getContainer()->get('request_stack');
-        }
-
-        $currentRequest = $this->requestStack->getCurrentRequest();
-
-        if (null === $currentRequest) {
-            return false; // Keine aktuelle Anfrage
-        }
-
-        return $this->scopeMatcher->isBackendRequest($currentRequest);
-    }
-
-    /**
-     * Check if the current request is a frontend request
-     */
-    public function isFrontend(): bool
-    {
-        $currentRequest = $this->requestStack->getCurrentRequest();
-
-        // Sicherstellen, dass die aktuelle Anfrage existiert
-        if (null === $currentRequest) {
-            return false; // Annahme: Kein Request => kein Frontend
-        }
-
-        return $this->scopeMatcher->isFrontendRequest($currentRequest);
     }
 
 	public function getHolidayCalendarIDs($cals): array
@@ -81,8 +58,6 @@ class ModuleCalenderEdit extends ModuleCalendar
 	// check whether the current FE User is allowed to edit any of the calendars
 	public function checkUserAuthorizations($arrCalendars): void
     {
-        $this->initializeServices();
-
         $this->User = FrontendUser::getInstance();
 
 		$this->allowElapsedEvents = false;
@@ -215,8 +190,9 @@ class ModuleCalenderEdit extends ModuleCalendar
 	public function generate(): string
     {
         $this->initializeServices();
+        $request = $this->requestStack->getCurrentRequest();
 
-        if ($this->isBackend()) {
+        if ($this->scopeMatcher->isBackendRequest($request)) {
             $objTemplate = new BackendTemplate('be_wildcard');
 
             $objTemplate->wildcard = '### CALENDAR WITH FE EDITING ###';

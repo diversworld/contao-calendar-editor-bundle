@@ -170,8 +170,6 @@ class ModuleHiddenEventlist extends ModuleEventlist
      */
     public function generate()
     {
-        $this->initializeServices();
-
         if ($this->isBackend()) {
             $objTemplate = new BackendTemplate('be_wildcard');
 
