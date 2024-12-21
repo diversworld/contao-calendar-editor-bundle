@@ -8,6 +8,12 @@ services:
     calls:
       - [ setCheckAuthService, [ '@Diversworld\CalendarEditorBundle\Services\CheckAuthService' ] ]
 
+  Diversworld\CalendarEditorBundle\Modules\ModuleEventEditor:
+    arguments:
+      - '@?logger'
+    tags:
+      - { name: monolog.logger, channel: contao.general }
+
   Diversworld\CalendarEditorBundle\Services\CheckAuthService:
     autowire: true
     autoconfigure: true

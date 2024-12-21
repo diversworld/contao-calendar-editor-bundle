@@ -18,11 +18,11 @@ use Contao\Date;
 use Contao\Events;
 use Contao\FrontendTemplate;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleEventEditor extends Events
-{
-    /**
+{/**
      * Template
      *
      * @var string
@@ -60,34 +60,19 @@ class ModuleEventEditor extends Events
         $this->requestStack = $container->get('request_stack');
     }
     /**
-     * Check if the current request is a backend request
-     */
-    public function isBackend(): bool
-    {
-        $currentRequest = $this->requestStack->getCurrentRequest();
-
-        return $this->scopeMatcher->isBackendRequest($currentRequest);
-    }
-
-    /**
-     * Check if the current request is a frontend request
-     */
-    public function isFrontend(): bool
-    {
-        $currentRequest = $this->requestStack->getCurrentRequest();
-
-        return $this->scopeMatcher->isFrontendRequest($currentRequest);
-    }
-
-    /**
      * generate Module
      */
     public function generate()
     {
         $this->initializeServices();
+
+        //$request = System::getContainer()->get('request_stack')->getCurrentRequest();
         $request = $this->requestStack->getCurrentRequest();
 
-        if ($this->scopeMatcher->isBackendRequest($request)) {
+		//if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
+        if( $this->scopeMatcher->isBackendRequest($request))
+        {
+            $this->logger->info('ModuleEventEditor In If-Statement');
             $objTemplate = new BackendTemplate('be_wildcard');
             $objTemplate->wildcard = '### EVENT EDITOR ###';
             $objTemplate->title = $this->headline;
@@ -106,7 +91,6 @@ class ModuleEventEditor extends Events
 
         return parent::generate();
     }
-
 
     /**
      * Returns an Event-URL for a given Event-Editor and a given Event
@@ -140,7 +124,6 @@ class ModuleEventEditor extends Events
             }
         }
     }
-
     /**
      * Get the calendars the user is allowed to edit
      * These calendars will appear in the selection-field in the edit-form (if there is not only one)
@@ -165,7 +148,6 @@ class ModuleEventEditor extends Events
         }
         return $calendars;
     }
-
     /**
      * Check user rights for editing on different stages of the formular
      * The first step is always to get an Calendar-object frome the array of calendars by the
@@ -234,8 +216,6 @@ class ModuleEventEditor extends Events
             return false;
         }
     }
-
-
     /**
      * check, whether the user is allowed to edit the specified Event
      * This is called when the user has general access to at least one calendar
@@ -246,21 +226,32 @@ class ModuleEventEditor extends Events
      */
     public function checkUserEditRights($user, $eventID, $currentObjectData): bool
     {
+        $this->initializeLogger();
+        $this->logger->info('checkUserEditRights aufgerufen', ['module' => $this->name]);
+        $this->logger->info('checkUserEditRights Parameter: ' . $user->id . ' eventID: ' . $eventID . ' currentObjectData pid: ' . print_r($currentObjectData, true), ['module' => $this->name]);
+
         // if no event is specified: ok, FE user can add new events :D
         if (!$eventID) {
             return true;
         }
+
         $objCalendar = $this->getCalendarObjectFromPID($currentObjectData->pid);
+        $this->logger->info('checkUserEditRights objCalendar: ' . $objCalendar->id);
+        $this->logger->info('checkUserEditRights currentObjectData: ' . $currentObjectData->pid);
+
         if (NULL === $objCalendar) {
             $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_unexpected'] . $currentObjectData->pid;
             return false; // Event not found or something else is wrong
         }
+
+        $this->logger->info('checkUserEditRights objCalendar: ' . $objCalendar->AllowEdit);
 
         if (!$objCalendar->AllowEdit) {
             $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'] . '(checkUserEditRights)';
             return false;
         }
 
+        $this->logger->info('checkUserEditRights isUserAuthorized: ' . $this->checkAuthService->isUserAuthorized($objCalendar, $user));
         // check calendar settings
         if ($this->checkAuthService->isUserAuthorized($objCalendar, $user)) {
             // if the editing is disabled in the BE: Deny editing in the FE
@@ -279,7 +270,10 @@ class ModuleEventEditor extends Events
                 return false;
             }
             $hasFrontendUser =  System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
-
+            $this->logger->info('checkUserEditRights hasFrontendUser: ' . $hasFrontendUser);
+            $this->logger->info('checkUserEditRights userIsAdmin: ' . $userIsAdmin);
+            $this->logger->info('checkUserEditRights user: ' . $user->id);
+            $this->logger->info('checkUserEditRights currentObjectData->fe_user: ' . $currentObjectData->fe_user);
             $result = ((!$objCalendar->caledit_onlyUser) || (($hasFrontendUser) && ($userIsAdmin || ($user->id == $currentObjectData->fe_user))));
             if (!$result) {
                 $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_OnlyUser'];
@@ -334,7 +328,6 @@ class ModuleEventEditor extends Events
         $this->redirect($jumpTo, 301);
     }
 
-
     public function getContentElements($eventID, &$contentID, &$contentData): void
     {
         // get Content Elements
@@ -365,7 +358,6 @@ class ModuleEventEditor extends Events
             }
         }
     }
-
 
     public function getEventInformation($currentEventObject, &$newEventData): void
     {
@@ -564,15 +556,21 @@ class ModuleEventEditor extends Events
         return $returnID;
     }
 
-
     protected function handleEdit($editID, $currentEventObject): void
     {
         $this->strTemplate = $this->caledit_template;
 
         $this->Template = new FrontendTemplate($this->strTemplate);
 
+        // Services initialisieren
+        $this->initializeServices();
+
+        // Input über den Symfony-DI-Container beziehen
+        $currentRequest = $this->requestStack->getCurrentRequest();
+
+
         // 1. Get Data from post/get
-        $newDate = $this->Input->get('add');
+        $newDate = $currentRequest->query->get('add');
 
         $newEventData = [];
         $NewContentData = [];
@@ -617,19 +615,19 @@ class ModuleEventEditor extends Events
 
         // after this: Overwrite it with the post data
         if ($this->Input->post('FORM_SUBMIT') == 'caledit_submit') {
-            $newEventData['startDate'] = $this->Input->post('startDate');
-            $newEventData['endDate'] = $this->Input->post('endDate');
-            $newEventData['startTime'] = $this->Input->post('startTime');
-            $newEventData['endTime'] = $this->Input->post('endTime');
-            $newEventData['title'] = $this->Input->post('title');
-            $newEventData['location'] = $this->Input->post('location');
-            $newEventData['teaser'] = $this->Input->postHtml('teaser', true);
-            $NewContentData['text'] = $this->Input->postHtml('details', true);
-            $newEventData['cssClass'] = $this->Input->post('cssClass');
-            $newEventData['pid'] = $this->Input->post('pid');
-            $newEventData['published'] = $this->Input->post('published');
-            $saveAs = $this->Input->post('saveAs') ?? 0;
-            $jumpToSelection = $this->Input->post('jumpToSelection');
+            $newEventData['startDate']  = $currentRequest->request->get('startDate');
+            $newEventData['endDate']    = $currentRequest->request->get('endDate');
+            $newEventData['startTime']  = $currentRequest->request->get('startTime');
+            $newEventData['endTime']    = $currentRequest->request->get('endTime');
+            $newEventData['title']      = $currentRequest->request->get('title');
+            $newEventData['location']   = $currentRequest->request->get('location');
+            $newEventData['teaser']     = $currentRequest->request->get('teaser', true);
+            $NewContentData['text']     = $currentRequest->request->get('details', true);
+            $newEventData['cssClass']   = $currentRequest->request->get('cssClass');
+            $newEventData['pid']        = $currentRequest->request->get('pid');
+            $newEventData['published']  = $currentRequest->request->get('published');
+            $saveAs                     = $currentRequest->request->get('saveAs') ?? 0;
+            $jumpToSelection            = $currentRequest->request->get('jumpToSelection');
 
             if ($published && !$this->caledit_allowPublish) {
                 // this should never happen, except the FE user is manipulating
@@ -858,7 +856,7 @@ class ModuleEventEditor extends Events
             // from http://pastebin.com/HcjkHLQK
             // via https://github.com/contao/core/issues/5086
             // Convert date formats into timestamps (check the eval setting first -> #3063)
-            if ($this->Input->post('FORM_SUBMIT') == 'caledit_submit') {
+            if ($currentRequest->request->get('FORM_SUBMIT') == 'caledit_submit') {
                 $rgxp = $field['eval']['rgxp'] ?? '';
                 if (($rgxp == 'date' || $rgxp == 'time' || $rgxp == 'datim') && $field['value'] != '') {
                     $objDate = new Date(Input::post($field['name']), $GLOBALS['TL_CONFIG'][$rgxp . 'Format']);
@@ -868,7 +866,7 @@ class ModuleEventEditor extends Events
 
             $objWidget = new $strClass($this->prepareForWidget($field, $field['name'], $field['value']));
             // Validate widget
-            if ($this->Input->post('FORM_SUBMIT') == 'caledit_submit') {
+            if ($currentRequest->request->get('FORM_SUBMIT') == 'caledit_submit') {
                 $objWidget->validate();
                 if ($objWidget->hasErrors()) {
                     $doNotSubmit = true;
@@ -896,7 +894,7 @@ class ModuleEventEditor extends Events
 
         $hasFrontendUser =  System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
 
-        if ((!$doNotSubmit) && ($this->Input->post('FORM_SUBMIT') == 'caledit_submit')) {
+        if ((!$doNotSubmit) && ($currentRequest->request->get('FORM_SUBMIT') == 'caledit_submit')) {
             // everything seems to be ok, so we can add the POST Data
             // into the Database
             if (!$hasFrontendUser) {
@@ -931,7 +929,7 @@ class ModuleEventEditor extends Events
             $this->generateRedirect($jumpToSelection, $dbId);
         } else {
             // Do NOT Submit
-            if ($this->Input->post('FORM_SUBMIT') == 'caledit_submit') {
+            if ($currentRequest->request->get('FORM_SUBMIT') == 'caledit_submit') {
                 $this->Template->InfoClass = 'tl_error';
                 if ($this->Template->InfoMessage == '') {
                     $this->Template->InfoMessage = $GLOBALS['TL_LANG']['MSC']['caledit_error'];
@@ -1288,7 +1286,6 @@ class ModuleEventEditor extends Events
         return;
     }
 
-
     protected function sendNotificationMail($NewEventData, $editID, $User, $cloneDates)
     {
         $notification = new Email();
@@ -1339,14 +1336,12 @@ class ModuleEventEditor extends Events
             $notification->sendTo($rec);
         }
     }
-
     /**
      * Generate module
      */
     protected function compile()
     {
         $this->initializeLogger();
-        $this->logger->info('ModuleEventEdit compile()');
         // Add TinyMCE-Stuff to header
         $this->addTinyMCE($this->caledit_tinMCEtemplate);
 
@@ -1354,14 +1349,15 @@ class ModuleEventEditor extends Events
         $this->initializeServices();
 
         // Input über den Symfony-DI-Container beziehen
-        $requestStack = System::getContainer()->get('request_stack');
-        $currentRequest = $requestStack->getCurrentRequest();
+        $currentRequest = $this->requestStack->getCurrentRequest();
 
         if ($currentRequest === null) {
+            $this->logger->error('No current request available.');
             throw new \RuntimeException('No current request available.');
         }
 
         $editID = $currentRequest->query->get('edit');
+
         $deleteID = $currentRequest->query->get('delete');
         if ($deleteID) {
             $editID = $deleteID;
@@ -1374,21 +1370,36 @@ class ModuleEventEditor extends Events
 
         $fatalError = false;
 
+        // Instanz des angemeldeten Frontend-Benutzers erhalten
         $this->User = FrontendUser::getInstance();
         $this->logger->info('ModuleEventEdit User: ' . $this->User->username);
+
+        // Kalender abrufen, die für den Benutzer erlaubt sind
         $this->allowedCalendars = $this->getCalendars($this->User);
-        $this->logger->info('ModuleEventEdit allowedCalendars: ' . print_r($this->allowedCalendars, true));
-        if (count($this->allowedCalendars) === 0) {
+
+        $this->logger->info('allowedCalendars: ' . count($this->allowedCalendars) . ' editId: ' . $editID);
+
+        $currentEventObject = null; // Standardwert für den Fall, dass kein Event vorhanden ist
+
+        if (count($this->allowedCalendars) == 0 && $eventID) {
             $fatalError = true;
             $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
         } else {
-            //$currentEventObject = CalendarEventsModelEdit::findByIdOrAlias($editID);
-            $currentEventObject = CalendarEventsModel::findByIdOrAlias($editID);
-            $AuthorizedUser = (bool)$this->checkUserEditRights($this->User, $editID, $currentEventObject);
-            $this->logger->info('ModuleEventEdit AuthorizedUser: ' . $AuthorizedUser);
-            if (!$AuthorizedUser) {
-                // a proper ErrorString is set in checkUserEditRights
+            if (!empty($editID)) {
+                $currentEventObject = CalendarEventsModelEdit::findByIdOrAlias($editID);
+
+                // Benutzerrechte prüfen, wenn ein Event vorhanden ist
+                $AuthorizedUser = $this->checkUserEditRights($this->User, $editID, $currentEventObject);
+                if (!$AuthorizedUser) {
+                    // Ein entsprechender Fehlertext wird in der Methode checkUserEditRights gesetzt
+                    $fatalError = true;
+                }
+            } elseif ($currentRequest->query->has('add')) {
+                // Aktion "add" erkannt - Ein neuer Event wird angelegt
+                $AuthorizedUser = true; // Benutzerrechte separat prüfen, falls erforderlich
+            } else {
                 $fatalError = true;
+                $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_InvalidAction'];
             }
         }
 
@@ -1414,5 +1425,4 @@ class ModuleEventEditor extends Events
         $this->handleEdit($editID, $currentEventObject);
     }
 }
-
 ?>

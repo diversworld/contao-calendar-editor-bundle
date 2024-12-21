@@ -13,6 +13,7 @@ use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Contao\ModuleCalendar;
 use Contao\CoreBundle\Routing\ScopeMatcher;
 use Doctrine\DBAL\Connection;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 class ModuleCalenderEdit extends ModuleCalendar
@@ -24,6 +25,13 @@ class ModuleCalenderEdit extends ModuleCalendar
     private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
     private RequestStack $requestStack; // Dependency Injection für RequestStack
     private ?CheckAuthService $checkAuthService = null;
+
+    private LoggerInterface $logger;
+
+    protected function initializeLogger(): void
+    {
+        $this->logger = System::getContainer()->get('monolog.logger.contao.general');
+    }
 
     public function setCheckAuthService(CheckAuthService $checkAuthService): void
     {
@@ -73,6 +81,8 @@ class ModuleCalenderEdit extends ModuleCalendar
 	// overwrite the compileWeeks-Method from ModuleCalendar
 	protected function compileWeeks(): array
     {
+        $this->initializeLogger();
+        $this->logger->info('compileWeeks called successfully', ['module' => $this->name]);
 		$intDaysInMonth = (int)date('t', $this->Date->monthBegin);
 		$intFirstDayOffset = (int)(date('w', $this->Date->monthBegin) - $this->cal_startDay);
 
@@ -92,6 +102,7 @@ class ModuleCalenderEdit extends ModuleCalendar
 				$addUrl = $page->getFrontendUrl();
 			}
 		}
+        $this->logger->info('addUrl: ' . $addUrl, ['module' => $this->name]);
 
 		$intYear = date('Y', $this->Date->tstamp);
 		$intMonth = date('m', $this->Date->tstamp);
@@ -179,11 +190,10 @@ class ModuleCalenderEdit extends ModuleCalendar
 			}
 			$arrDays[$strWeekClass][$i]['class'] = 'days active' . $strClass;
 			$arrDays[$strWeekClass][$i]['href'] = $this->strLink . '?day=' . $intKey;
-			$arrDays[$strWeekClass][$i]['title'] = sprintf(specialchars($GLOBALS['TL_LANG']['MSC']['cal_events']), count($events));
+			$arrDays[$strWeekClass][$i]['title'] = sprintf($GLOBALS['TL_LANG']['MSC']['cal_events'], count($events));
 			$arrDays[$strWeekClass][$i]['events'] = $events;
 			$arrDays[$strWeekClass][$i]['holidayEvents'] = $holidayEvents;
 		}
-
 		return $arrDays;
 	}
 
