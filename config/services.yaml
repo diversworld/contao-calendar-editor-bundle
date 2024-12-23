@@ -4,11 +4,11 @@ services:
     autoconfigure: true
     public: false
 
-  Diversworld\CalendarEditorBundle\Modules\ModuleCalenderEdit:
+  Diversworld\CalendarEditorBundle\Controler\Modules\ModuleCalendarEdit:
     calls:
       - [ setCheckAuthService, [ '@Diversworld\CalendarEditorBundle\Services\CheckAuthService' ] ]
 
-  Diversworld\CalendarEditorBundle\Modules\ModuleEventEditor:
+  Diversworld\CalendarEditorBundle\Controler\Modules\ModuleEventEditor:
     arguments:
       - '@?logger'
     tags:

@@ -1,6 +1,6 @@
 <?php
 
-namespace Diversworld\CalendarEditorBundle\Modules;
+namespace Diversworld\CalendarEditorBundle\Controler\Modules;
 
 use Contao\BackendTemplate;
 use Contao\Date;
@@ -16,7 +16,7 @@ use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
-class ModuleCalenderEdit extends ModuleCalendar
+class ModuleCalendarEdit extends ModuleCalendar
 {
 	// variable which indicates whether events can be added or not (on elapsed days)
 	protected bool $allowElapsedEvents;
@@ -138,7 +138,7 @@ class ModuleCalenderEdit extends ModuleCalendar
 				continue;
 			}
 
-			$intKey = ModuleCalenderEdit . phpdate('Ym', $this->Date->tstamp) . ((strlen($intDay) < 2) ? '0' . $intDay : $intDay);
+			$intKey = phpdate('Ym', $this->Date->tstamp) . ((strlen($intDay) < 2) ? '0' . $intDay : $intDay);
 			$strClass .= ($intKey == date('Ymd')) ? ' today' : '';
 
 			$arrDays[$strWeekClass][$i]['addLabel'] = $GLOBALS['TL_LANG']['MSC']['caledit_addLabel'];

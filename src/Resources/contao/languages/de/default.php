@@ -42,10 +42,10 @@ $GLOBALS['TL_LANG']['MSC']['caledit_ConfirmEventDelete'] = "Löschen des Termins
 $GLOBALS['TL_LANG']['MSC']['caledit_InsertMoreDates'] = "Weitere Daten eingeben";
 
 $GLOBALS['TL_LANG']['MSC']['caledit_JumpWhatsNext'] = 'Nach dem Speichern';
-$GLOBALS['TL_LANG']['MSC']['caledit_JumpTo'] = ['new'  => 'Einen neuen Termin erstellen',
-                                                'view' => 'Diesen Termin auf der Webseite anzeigen',
-                                                'edit' => 'Diesen Termin weiter bearbeiten',
-                                                'clone' => 'Diesen Termin duplizieren'];
+$GLOBALS['TL_LANG']['MSC']['caledit_JumpToNew']     = 'Einen neuen Termin erstellen';
+$GLOBALS['TL_LANG']['MSC']['caledit_JumpToView']    = 'Diesen Termin auf der Webseite anzeigen';
+$GLOBALS['TL_LANG']['MSC']['caledit_JumpToEdit']    = 'Diesen Termin weiter bearbeiten';
+$GLOBALS['TL_LANG']['MSC']['caledit_JumpToClone']   = 'Diesen Termin duplizieren';
 
 $GLOBALS['TL_LANG']['MSC']['caledit_MailSubjectNew'] = "Neues Event auf %s";
 $GLOBALS['TL_LANG']['MSC']['caledit_MailSubjectEdit'] = "Ein Event wurde bearbeitet auf %s";

@@ -1,6 +1,6 @@
 <?php
 
-namespace Diversworld\CalendarEditorBundle\Modules;
+namespace Diversworld\CalendarEditorBundle\Controler\Modules;
 
 use Contao\BackendTemplate;
 use Contao\CalendarEventsModel;
@@ -839,40 +839,27 @@ class ModuleEventEditor extends Events
             ];
         }
 
-        // Define options and references
-        $JumpOpts = [
-            'new' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToNew'],
-            'view' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView'], // Korrigiert
-            'edit' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToEdit'],
-            'clone' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToClone']
-        ];
+        // create jump-to-selection
+        $JumpOpts = ['new', 'view', 'edit', 'clone'];
         $JumpRefs = [
             'new' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToNew'],
-            'view' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView'], // Korrigiert
+            'view' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView'],
             'edit' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToEdit'],
             'clone' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToClone']
         ];
-
-        if (!is_array($JumpOpts) || !is_array($JumpRefs)) {
-            throw new \RuntimeException('JumpOpts oder JumpRefs ist kein Array.');
-        }
-
-        // Create the field configuration
         $fields['jumpToSelection'] = [
             'name' => 'jumpToSelection',
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpWhatsNext'],
             'inputType' => 'select',
-            'options' => $JumpOpts, // Optionen für das Select-Feld
-            'reference' => $JumpRefs, // Referenz für Labels
-            'value' => 'new',
-            'eval' => [
-                'mandatory' => false,
-                'includeBlankOption' => true,
-                'maxlength' => 128,
-                'decodeEntities' => true
-                //'isAssociative' => true // Behandelt das Array als assoziativ
-            ]
+            'options' => $JumpOpts,
+            'value' => $jumpToSelection,
+            'reference' => $JumpRefs,
+            'eval' => ['mandatory' => true, 'includeBlankOption' => true, 'maxlength' => 128, 'decodeEntities' => true]
         ];
+        $this->logger->info('handleEdit: field ' . print_r( $fields['jumpToSelection'], true), ['module' => $this->name]);
+        $this->logger->info('handleEdit: field options ' . print_r( $fields['jumpToSelection']['options'], true), ['module' => $this->name]);
+        $this->logger->info('handleEdit: field reference ' . print_r( $fields['jumpToSelection']['reference'], true), ['module' => $this->name]);
+        $this->logger->info('handleEdit: field eval ' . print_r( $fields['jumpToSelection']['eval'], true), ['module' => $this->name]);
 
         // here: CALL Hooks with $NewEventData, $currentEventObject, $fields
         if (array_key_exists('buildCalendarEditForm', $GLOBALS['TL_HOOKS']) && is_array($GLOBALS['TL_HOOKS']['buildCalendarEditForm'])) {
@@ -900,11 +887,6 @@ class ModuleEventEditor extends Events
                     $objDate = new Date(Input::post($field['name']), $GLOBALS['TL_CONFIG'][$rgxp . 'Format']);
                     $field['value'] = $objDate->tstamp;
                 }
-            }
-
-            // Überprüfen von options und reference
-            foreach (['options', 'reference'] as $key) {
-                $this->logger->error('Field configuration: checking array ' . $field['name'] . ' (' . $key . ' is type '.gettype($field[$key]).') - ' . sprintf('Expected array for %s, got %s.',$key,gettype($field[$key])));
             }
 
             $fieldAttributes = [

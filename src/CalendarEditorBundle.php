@@ -19,8 +19,17 @@
 namespace Diversworld\CalendarEditorBundle;
 
 use Symfony\Component\HttpKernel\Bundle\Bundle;
-
+use \Diversworld\CalendarEditorBundle\DependencyInjection\CalendarEditorExtension;
 
 class CalendarEditorBundle extends Bundle
 {
+    public function getPath(): string
+    {
+        return \dirname(__DIR__);
+    }
+
+    public function getContainerExtension(): CalendarEditorExtension
+    {
+        return new CalendarEditorExtension();
+    }
 }

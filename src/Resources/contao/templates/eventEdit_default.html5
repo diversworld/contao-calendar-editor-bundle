@@ -106,22 +106,10 @@
 			<?php if (isset($this->fields['captcha']) && $this->fields['captcha']): ?>
 				<?= $this->fields['captcha']->parse() ?>
 			<?php endif; ?>
- <pre>
-       <?php print_r($this->fields['jumpToSelection']); ?>
-   </pre>
-   <ul>
-          <?php foreach ($this->fields['jumpToSelection']->arrOptions as $option): ?>
-              <li>
-                  Value: <?= $option['value'] ?>, Label: <?= $option['label'] ?>
-              </li>
-          <?php endforeach; ?>
-      </ul>
-			<?php if ($this->fields['jumpToSelection']): ?>
-                   <div class="form-group">
-                       <label for="<?= $this->fields['jumpToSelection']->id ?>"><?= $this->fields['jumpToSelection']->label ?></label>
-                       <?= $this->fields['jumpToSelection']->parse() ?>
-                   </div>
-               <?php endif; ?>
+
+			<?php if (isset($this->fields['jumpToSelection']) && $this->fields['jumpToSelection']): ?>
+                <?= $this->fields['jumpToSelection']->parse() ?>
+            <?php endif; ?>
 
 			<div>
 				<input type="submit" class="submit" value="<?php echo $this->submit; ?>" />
