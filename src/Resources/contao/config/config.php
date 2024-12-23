@@ -21,10 +21,10 @@
  */
 
 use Diversworld\CalendarEditorBundle\Hooks\ListAllEventsHook;
-use Diversworld\CalendarEditorBundle\Controller\Modules\ModuleCalendarEdit;
-use Diversworld\CalendarEditorBundle\Controller\Modules\ModuleEventEditor;
-use Diversworld\CalendarEditorBundle\Controller\Modules\ModuleEventReaderEdit;
-use Diversworld\CalendarEditorBundle\Controller\Modules\ModuleHiddenEventlist;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalendarEdit;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleEventEditor;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleEventReaderEdit;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleHiddenEventlist;
 
 $GLOBALS['BE_FFL']['select'] = 'MyCustomSelectWidget';
 

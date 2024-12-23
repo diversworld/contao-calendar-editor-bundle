@@ -16,7 +16,6 @@
  *
  */
 
-
 namespace Diversworld\CalendarEditorBundle\ContaoManager;
 
 use Diversworld\CalendarEditorBundle\CalendarEditorBundle;

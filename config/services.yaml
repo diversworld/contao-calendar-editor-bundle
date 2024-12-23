@@ -4,26 +4,20 @@ services:
     autoconfigure: true
     public: false
 
-  Diversworld\CalendarEditorBundle\Controller\Modules\ModuleCalendarEdit:
+  Diversworld\CalendarEditorBundle\Controller\Module\ModuleEventEditor:
+    arguments:
+      $requestStack: '@request_stack'
+      $scopeMatcher: '@contao.routing.scope_matcher'
+      $logger: '@logger'
+
+  Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalendarEdit:
     calls:
       - [ setCheckAuthService, [ '@Diversworld\CalendarEditorBundle\Services\CheckAuthService' ] ]
-
-  Diversworld\CalendarEditorBundle\Controller\Modules\ModuleEventEditor:
-    arguments:
-      - '@?logger'
-    tags:
-      - { name: monolog.logger, channel: contao.general }
 
   Diversworld\CalendarEditorBundle\Services\CheckAuthService:
     autowire: true
     autoconfigure: true
     public: true
-
-  monolog.logger.contao.general:
-    class: Monolog\Logger
-    arguments: ['contao.general']
-    tags:
-      - { name: monolog.logger, channel: contao.general }
 
   _instanceof:
     Contao\CoreBundle\Framework\FrameworkAwareInterface:

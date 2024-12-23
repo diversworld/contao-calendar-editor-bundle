@@ -1,6 +1,6 @@
 <?php
 
-namespace Diversworld\CalendarEditorBundle\Controller\Modules;
+namespace Diversworld\CalendarEditorBundle\Controller\Module;
 
 use Contao\BackendTemplate;
 use Contao\CalendarEventsModel;
@@ -17,6 +17,7 @@ use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Contao\Date;
 use Contao\Events;
 use Contao\FrontendTemplate;
+use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -31,41 +32,25 @@ class ModuleEventEditor extends Events
     protected string $errorString = '';
     protected array $allowedCalendars = [];
 
-    private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
-    private RequestStack $requestStack; // Dependency Injection für RequestStack
-    private LoggerInterface $logger;
-
     private ?CheckAuthService $checkAuthService = null;
+
+    public function __construct(
+        private readonly RequestStack $requestStack,  // Dependency Injection für RequestStack
+        private ScopeMatcher $scopeMatcher,  // Dependency Injection für ScopeMatcher
+        private readonly LoggerInterface|null $logger = null,
+    ) {
+    }
 
     public function setCheckAuthService(CheckAuthService $checkAuthService): void
     {
         System::log('setCheckAuthService called successfully', __METHOD__, TL_GENERAL);
         $this->checkAuthService = $checkAuthService;
     }
-
-    protected function initializeLogger(): void
-    {
-        $this->logger = System::getContainer()->get('monolog.logger.contao.general');
-    }
-
-    protected function initializeServices(): void
-    {
-        $container = System::getContainer();
-
-        if ($this->checkAuthService === null) {
-            $this->checkAuthService = $container->get('Diversworld\CalendarEditorBundle\Services\CheckAuthService');
-        }
-
-        $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
-        $this->requestStack = $container->get('request_stack');
-    }
     /**
      * generate Module
      */
     public function generate()
     {
-        $this->initializeServices();
-
         //$request = System::getContainer()->get('request_stack')->getCurrentRequest();
         $request = $this->requestStack->getCurrentRequest();
 
@@ -78,7 +63,12 @@ class ModuleEventEditor extends Events
             $objTemplate->title = $this->headline;
             $objTemplate->id = $this->id;
             $objTemplate->link = $this->name;
-            $objTemplate->href = 'contao/main.php?do=themes&amp;table=tl_module&amp;act=edit&amp;id=' . $this->id;
+            $objTemplate->href = System::getContainer()->get('router')->generate('contao_backend', [
+                'do' => 'themes',
+                'table' => 'tl_module',
+                'act' => 'edit',
+                'id' => $this->id,
+            ]);
             return $objTemplate->parse();
         }
 
@@ -91,7 +81,90 @@ class ModuleEventEditor extends Events
 
         return parent::generate();
     }
+    /**
+     * Generate module
+     */
+    protected function compile()
+    {;
+        // Add TinyMCE-Stuff to header
+        $this->addTinyMCE($this->caledit_tinMCEtemplate);
 
+        // Input über den Symfony-DI-Container beziehen
+        $currentRequest = $this->requestStack->getCurrentRequest();
+
+        if ($currentRequest === null) {
+            $this->logger->error('No current request available.');
+            throw new \RuntimeException('No current request available.');
+        }
+
+        $editID = $currentRequest->query->get('edit');
+
+        $deleteID = $currentRequest->query->get('delete');
+        if ($deleteID) {
+            $editID = $deleteID;
+        }
+
+        $cloneID = $currentRequest->query->get('clone');
+        if ($cloneID) {
+            $editID = $cloneID;
+        }
+
+        $fatalError = false;
+
+        // Instanz des angemeldeten Frontend-Benutzers erhalten
+        $this->User = FrontendUser::getInstance();
+        $this->logger->info('ModuleEventEdit User: ' . $this->User->username);
+
+        // Kalender abrufen, die für den Benutzer erlaubt sind
+        $this->allowedCalendars = $this->getCalendars($this->User);
+
+        $this->logger->info('allowedCalendars: ' . count($this->allowedCalendars) . ' editId: ' . $editID);
+
+        $currentEventObject = null; // Standardwert für den Fall, dass kein Event vorhanden ist
+
+        if (count($this->allowedCalendars) === 0 && $eventID) {
+            $fatalError = true;
+            $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
+        } else {
+            if (!empty($editID)) {
+                $currentEventObject = CalendarEventsModelEdit::findByIdOrAlias($editID);
+
+                // Benutzerrechte prüfen, wenn ein Event vorhanden ist
+                $AuthorizedUser = $this->checkUserEditRights($this->User, $editID, $currentEventObject);
+                if (!$AuthorizedUser) {
+                    // Ein entsprechender Fehlertext wird in der Methode checkUserEditRights gesetzt
+                    $fatalError = true;
+                }
+            } elseif ($currentRequest->query->has('add')) {
+                // Aktion "add" erkannt - Ein neuer Event wird angelegt
+                $AuthorizedUser = true; // Benutzerrechte separat prüfen, falls erforderlich
+            } else {
+                $fatalError = true;
+                $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_InvalidAction'];
+            }
+        }
+
+        // Fatal error, editing not allowed, abort.
+        if ($fatalError) {
+            $this->strTemplate = $this->caledit_template;
+            $this->Template = new FrontendTemplate($this->strTemplate);
+            $this->Template->FatalError = $this->errorString;
+            return;
+        }
+
+        // ok, the user is an authorized user
+        if ($deleteID) {
+            $this->handleDelete($currentEventObject);
+            return;
+        }
+
+        if ($cloneID) {
+            $this->handleClone($currentEventObject);
+            return;
+        }
+
+        $this->handleEdit($editID, $currentEventObject);
+    }
     /**
      * Returns an Event-URL for a given Event-Editor and a given Event
      **/
@@ -226,7 +299,6 @@ class ModuleEventEditor extends Events
      */
     public function checkUserEditRights($user, $eventID, $currentObjectData): bool
     {
-        $this->initializeLogger();
         $this->logger->info('checkUserEditRights aufgerufen', ['module' => $this->name]);
         $this->logger->info('checkUserEditRights Parameter: ' . $user->id . ' eventID: ' . $eventID . ' currentObjectData pid: ' . print_r($currentObjectData, true), ['module' => $this->name]);
 
@@ -558,14 +630,10 @@ class ModuleEventEditor extends Events
 
     protected function handleEdit($editID, $currentEventObject): void
     {
-        $this->initializeLogger();
         $this->logger->info('handleEdit');
         $this->strTemplate = $this->caledit_template;
 
         $this->Template = new FrontendTemplate($this->strTemplate);
-
-        // Services initialisieren
-        $this->initializeServices();
 
         // Input über den Symfony-DI-Container beziehen
         $currentRequest = $this->requestStack->getCurrentRequest();
@@ -1376,94 +1444,6 @@ class ModuleEventEditor extends Events
         foreach ($arrRecipients as $rec) {
             $notification->sendTo($rec);
         }
-    }
-    /**
-     * Generate module
-     */
-    protected function compile()
-    {
-        $this->initializeLogger();
-        // Add TinyMCE-Stuff to header
-        $this->addTinyMCE($this->caledit_tinMCEtemplate);
-
-        // Services initialisieren
-        $this->initializeServices();
-
-        // Input über den Symfony-DI-Container beziehen
-        $currentRequest = $this->requestStack->getCurrentRequest();
-
-        if ($currentRequest === null) {
-            $this->logger->error('No current request available.');
-            throw new \RuntimeException('No current request available.');
-        }
-
-        $editID = $currentRequest->query->get('edit');
-
-        $deleteID = $currentRequest->query->get('delete');
-        if ($deleteID) {
-            $editID = $deleteID;
-        }
-
-        $cloneID = $currentRequest->query->get('clone');
-        if ($cloneID) {
-            $editID = $cloneID;
-        }
-
-        $fatalError = false;
-
-        // Instanz des angemeldeten Frontend-Benutzers erhalten
-        $this->User = FrontendUser::getInstance();
-        $this->logger->info('ModuleEventEdit User: ' . $this->User->username);
-
-        // Kalender abrufen, die für den Benutzer erlaubt sind
-        $this->allowedCalendars = $this->getCalendars($this->User);
-
-        $this->logger->info('allowedCalendars: ' . count($this->allowedCalendars) . ' editId: ' . $editID);
-
-        $currentEventObject = null; // Standardwert für den Fall, dass kein Event vorhanden ist
-
-        if (count($this->allowedCalendars) === 0 && $eventID) {
-            $fatalError = true;
-            $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
-        } else {
-            if (!empty($editID)) {
-                $currentEventObject = CalendarEventsModelEdit::findByIdOrAlias($editID);
-
-                // Benutzerrechte prüfen, wenn ein Event vorhanden ist
-                $AuthorizedUser = $this->checkUserEditRights($this->User, $editID, $currentEventObject);
-                if (!$AuthorizedUser) {
-                    // Ein entsprechender Fehlertext wird in der Methode checkUserEditRights gesetzt
-                    $fatalError = true;
-                }
-            } elseif ($currentRequest->query->has('add')) {
-                // Aktion "add" erkannt - Ein neuer Event wird angelegt
-                $AuthorizedUser = true; // Benutzerrechte separat prüfen, falls erforderlich
-            } else {
-                $fatalError = true;
-                $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_InvalidAction'];
-            }
-        }
-
-        // Fatal error, editing not allowed, abort.
-        if ($fatalError) {
-            $this->strTemplate = $this->caledit_template;
-            $this->Template = new FrontendTemplate($this->strTemplate);
-            $this->Template->FatalError = $this->errorString;
-            return;
-        }
-
-        // ok, the user is an authorized user
-        if ($deleteID) {
-            $this->handleDelete($currentEventObject);
-            return;
-        }
-
-        if ($cloneID) {
-            $this->handleClone($currentEventObject);
-            return;
-        }
-
-        $this->handleEdit($editID, $currentEventObject);
     }
 }
 ?>
