@@ -138,7 +138,7 @@ class ModuleCalenderEdit extends ModuleCalendar
 				continue;
 			}
 
-			$intKey = date('Ym', $this->Date->tstamp) . ((strlen($intDay) < 2) ? '0' . $intDay : $intDay);
+			$intKey = ModuleCalenderEdit . phpdate('Ym', $this->Date->tstamp) . ((strlen($intDay) < 2) ? '0' . $intDay : $intDay);
 			$strClass .= ($intKey == date('Ymd')) ? ' today' : '';
 
 			$arrDays[$strWeekClass][$i]['addLabel'] = $GLOBALS['TL_LANG']['MSC']['caledit_addLabel'];

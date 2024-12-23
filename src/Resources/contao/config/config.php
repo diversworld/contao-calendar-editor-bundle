@@ -26,10 +26,14 @@ use Diversworld\CalendarEditorBundle\Modules\ModuleEventEditor;
 use Diversworld\CalendarEditorBundle\Modules\ModuleEventReaderEdit;
 use Diversworld\CalendarEditorBundle\Modules\ModuleHiddenEventlist;
 
+$GLOBALS['BE_FFL']['select'] = 'MyCustomSelectWidget';
+
 $GLOBALS['FE_MOD']['events']['calendarEdit']        = ModuleCalenderEdit::class;
 $GLOBALS['FE_MOD']['events']['EventEditor']         = ModuleEventEditor::class;
 $GLOBALS['FE_MOD']['events']['EventReaderEditLink'] = ModuleEventReaderEdit::class;
 $GLOBALS['FE_MOD']['events']['EventHiddenList']     = ModuleHiddenEventlist::class;
 
+
 //$GLOBALS['TL_HOOKS']['getAllEvents'][] = [ListAllEventsHook::class, 'updateAllEvents'];
 $GLOBALS['TL_HOOKS']['listAllEvents'][] = ['Diversworld\CalendarEditorBundle\Hooks\ListAllEventsHook', 'onListAllEvents'];
+$GLOBALS['TL_HOOKS']['loadDataContainer'][] = ['Diversworld\CalendarEditorBundle\Hooks\MyDebugClass', 'checkJumpToSelectionOptions'];

@@ -558,6 +558,8 @@ class ModuleEventEditor extends Events
 
     protected function handleEdit($editID, $currentEventObject): void
     {
+        $this->initializeLogger();
+        $this->logger->info('handleEdit');
         $this->strTemplate = $this->caledit_template;
 
         $this->Template = new FrontendTemplate($this->strTemplate);
@@ -613,21 +615,23 @@ class ModuleEventEditor extends Events
         $saveAs = '0';
         $jumpToSelection = '';
 
+        $formSubmit = Input::post('FORM_SUBMIT');
+        $this->logger->info('FORM_SUBMIT Wert: ' . var_export($formSubmit, true));
         // after this: Overwrite it with the post data
-        if ($this->Input->post('FORM_SUBMIT') == 'caledit_submit') {
-            $newEventData['startDate']  = $currentRequest->request->get('startDate');
-            $newEventData['endDate']    = $currentRequest->request->get('endDate');
-            $newEventData['startTime']  = $currentRequest->request->get('startTime');
-            $newEventData['endTime']    = $currentRequest->request->get('endTime');
-            $newEventData['title']      = $currentRequest->request->get('title');
-            $newEventData['location']   = $currentRequest->request->get('location');
-            $newEventData['teaser']     = $currentRequest->request->get('teaser', true);
-            $NewContentData['text']     = $currentRequest->request->get('details', true);
-            $newEventData['cssClass']   = $currentRequest->request->get('cssClass');
-            $newEventData['pid']        = $currentRequest->request->get('pid');
-            $newEventData['published']  = $currentRequest->request->get('published');
-            $saveAs                     = $currentRequest->request->get('saveAs') ?? 0;
-            $jumpToSelection            = $currentRequest->request->get('jumpToSelection');
+        if (Input::post('FORM_SUBMIT') === 'caledit_submit') {
+            $newEventData['startDate']  = Input::post('startDate');
+            $newEventData['endDate']    = Input::post('endDate');
+            $newEventData['startTime']  = Input::post('startTime');
+            $newEventData['endTime']    = Input::post('endTime');
+            $newEventData['title']      = Input::post('title');
+            $newEventData['location']   = Input::post('location');
+            $newEventData['teaser']     = Input::post('teaser', true);
+            $NewContentData['text']     = Input::post('details', true);
+            $newEventData['cssClass']   = Input::post('cssClass');
+            $newEventData['pid']        = Input::post('pid');
+            $newEventData['published']  = Input::post('published');
+            $saveAs                     = Input::post('saveAs') ?? 0;
+            $jumpToSelection            = Input::post('jumpToSelection');
 
             if ($published && !$this->caledit_allowPublish) {
                 // this should never happen, except the FE user is manipulating
@@ -651,7 +655,10 @@ class ModuleEventEditor extends Events
             }
         }
 
-        $mandfields = deserialize($this->caledit_mandatoryfields);
+        $mandfields = @unserialize($this->caledit_mandatoryfields);
+        if ($mandfields === false) {
+            $mandfields = json_decode($this->caledit_mandatoryfields, true);
+        }
         $mandTeaser = (is_array($mandfields) && array_intersect(array('teaser'), $mandfields));
         $mandLocation = (is_array($mandfields) && array_intersect(array('location'), $mandfields));
         $mandDetails = (is_array($mandfields) && array_intersect(array('details'), $mandfields));
@@ -659,14 +666,19 @@ class ModuleEventEditor extends Events
         $mandCss = (is_array($mandfields) && array_intersect(array('css'), $mandfields));
         // fill template with fields ...
         $fields = [];
+
         $fields['startDate'] = [
             'name' => 'startDate',
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_startdate'],
-            'inputType' => 'text', // or: 'calendarfield' (see below),
-            'value' => $newEventData['startDate'],
-            'eval' => ['rgxp' => 'date',
+            'inputType' => 'text',
+            'value' => $newEventData['startDate'] ?? null,
+            'eval' => [
+                'rgxp' => 'date',
                 'mandatory' => true,
-                'decodeEntities' => true]
+                'maxlength' => 10,
+                'decodeEntities' => true,
+                'datepicker' => false // Datepicker entfernen
+            ]
         ];
 
         $fields['endDate'] = [
@@ -674,13 +686,20 @@ class ModuleEventEditor extends Events
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_enddate'],
             'inputType' => 'text',
             'value' => $newEventData['endDate'] ?? null,
-            'eval' => ['rgxp' => 'date', 'mandatory' => false, 'maxlength' => 128, 'decodeEntities' => true]
+            'eval' => [
+                'rgxp' => 'date',
+                'mandatory' => false,
+                'maxlength' => 10,
+                'decodeEntities' => true,
+                'datepicker' => false // Datepicker entfernen
+            ]
         ];
 
-        if ($this->caledit_useDatePicker) {
+        // Kein Datepicker, einfach Standardfelder
+        /*if ($this->caledit_useDatePicker) {
             $this->addDatePicker($fields['startDate']);
             $this->addDatePicker($fields['endDate']);
-        }
+        }*/
 
         $fields['startTime'] = [
             'name' => 'startTime',
@@ -731,78 +750,83 @@ class ModuleEventEditor extends Events
         ];
 
         if (count($this->allowedCalendars) > 1) {
-            // Show allowed Calendars in a select-field
-            $pref = [];
-            $popt = [];
+            // Prepare options and references
+            $options = [];
             foreach ($this->allowedCalendars as $cal) {
-                $popt[] = $cal->id;
-                $pref[$cal->id] = $cal->title;
+                $options[$cal->id] = $cal->title; // Use associative array directly
             }
+
             $fields['pid'] = [
                 'name' => 'pid',
                 'label' => $GLOBALS['TL_LANG']['MSC']['caledit_pid'],
                 'inputType' => 'select',
-                'options' => $popt,
-                'value' => $newEventData['pid'] ?? $cal->id,
-                'reference' => $pref,
-                'eval' => ['mandatory' => true]
+                'options' => $options, // Associative array for options
+                'value' => $newEventData['pid'] ?? null, // Use null if no default value is set
+                'eval' => [
+                    'mandatory' => true,
+                    'isAssociative' => true, // Ensures Contao treats the array as associative
+                ],
             ];
         }
-
         $xx = $this->caledit_alternateCSSLabel;
-        $cssLabel = (empty($xx)) ? $GLOBALS['TL_LANG']['MSC']['caledit_css'] : $this->caledit_alternateCSSLabel;
+        $cssLabel = $this->caledit_alternateCSSLabel ?: $GLOBALS['TL_LANG']['MSC']['caledit_css'];
 
         if ($this->caledit_usePredefinedCss) {
-            $cssValues = StringUtil::deserialize($this->caledit_cssValues);
+            $cssValues = StringUtil::deserialize($this->caledit_cssValues, true);
+            $this->logger->info('cssValues Inhalt: ' . print_r($cssValues, true));
 
-            $ref = [];
-            $opt = [];
-
-
+            $options = [];
             foreach ($cssValues as $cssv) {
-                $opt[] = $cssv['value'];
-                $ref[$cssv['value']] = $cssv['label'];
+                $options[$cssv['value']] = $cssv['label']; // Directly create associative array
+                $this->logger->info('options: ' . print_r($options, true), ['module' => $this->name]);
             }
-
 
             $fields['cssClass'] = [
                 'name' => 'cssClass',
                 'label' => $cssLabel,
                 'inputType' => 'select',
-                'options' => $opt,
-                'value' => $newEventData['cssClass'] ?? '',
-                'reference' => $ref,
-                'eval' => ['mandatory' => $mandCss, 'includeBlankOption' => true, 'maxlength' => 128, 'decodeEntities' => true]
+                'options' => $options ?? [], // Associative array for options
+                'value' => $newEventData['cssClass'] ?? '', // Default value
+                'eval' => [
+                    'mandatory' => $mandCss,
+                    'includeBlankOption' => true,
+                    'maxlength' => 128,
+                    'decodeEntities' => true,
+                    //'isAssociative' => true, // Ensure proper handling of options
+                ],
             ];
         } else {
             $fields['cssClass'] = [
                 'name' => 'cssClass',
                 'label' => $cssLabel,
                 'inputType' => 'text',
-                'value' => $newEventData['cssClass'] ?? '',
-                'eval' => ['mandatory' => $mandCss, 'maxlength' => 128, 'decodeEntities' => true]
+                'value' => $newEventData['cssClass'] ?? '', // Default value
+                'eval' => [
+                    'mandatory' => $mandCss,
+                    'maxlength' => 128,
+                    'decodeEntities' => true,
+                ],
             ];
         }
 
+        $this->logger->info('handleEdit: fields ' . print_r($fields, true));
         if ($this->caledit_allowPublish) {
             $fields['published'] = [
                 'name' => 'published',
-                'label' => '', // $GLOBALS['TL_LANG']['MSC']['caledit_published'],
+                'label' => $GLOBALS['TL_LANG']['MSC']['caledit_published'],
                 'inputType' => 'checkbox',
-                'value' => $newEventData['published'] ?? ''
+                'value' => $newEventData['published'] ?? '0'
             ];
-            $fields['published']['options']['1'] = $GLOBALS['TL_LANG']['MSC']['caledit_published'];
         }
 
         if ($editID) {
             // create a checkbox "save as copy"
             $fields['saveAs'] = [
                 'name' => 'saveAs',
-                'label' => '', // $GLOBALS['TL_LANG']['MSC']['caledit_saveAs']
+                'label' => $GLOBALS['TL_LANG']['MSC']['caledit_saveAs'],
                 'inputType' => 'checkbox',
                 'value' => $saveAs
             ];
-            $fields['saveAs']['options']['1'] = $GLOBALS['TL_LANG']['MSC']['caledit_saveAs'];
         }
 
         $hasFrontendUser =  System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
@@ -815,22 +839,39 @@ class ModuleEventEditor extends Events
             ];
         }
 
-        // create jump-to-selection
-        $JumpOpts = ['new', 'view', 'edit', 'clone'];
-        $JumpRefs = [
+        // Define options and references
+        $JumpOpts = [
             'new' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToNew'],
-            'view' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView'],
+            'view' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView'], // Korrigiert
             'edit' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToEdit'],
             'clone' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToClone']
         ];
+        $JumpRefs = [
+            'new' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToNew'],
+            'view' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView'], // Korrigiert
+            'edit' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToEdit'],
+            'clone' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToClone']
+        ];
+
+        if (!is_array($JumpOpts) || !is_array($JumpRefs)) {
+            throw new \RuntimeException('JumpOpts oder JumpRefs ist kein Array.');
+        }
+
+        // Create the field configuration
         $fields['jumpToSelection'] = [
             'name' => 'jumpToSelection',
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpWhatsNext'],
             'inputType' => 'select',
-            'options' => $JumpOpts,
-            'value' => $jumpToSelection,
-            'reference' => $JumpRefs,
-            'eval' => ['mandatory' => false, 'includeBlankOption' => true, 'maxlength' => 128, 'decodeEntities' => true]
+            'options' => $JumpOpts, // Optionen für das Select-Feld
+            'reference' => $JumpRefs, // Referenz für Labels
+            'value' => 'new',
+            'eval' => [
+                'mandatory' => false,
+                'includeBlankOption' => true,
+                'maxlength' => 128,
+                'decodeEntities' => true
+                //'isAssociative' => true // Behandelt das Array als assoziativ
+            ]
         ];
 
         // here: CALL Hooks with $NewEventData, $currentEventObject, $fields
@@ -850,28 +891,47 @@ class ModuleEventEditor extends Events
         $doNotSubmit = false;
         foreach ($fields as $field) {
             $strClass = $GLOBALS['TL_FFL'][$field['inputType']];
-
             $field['eval']['required'] = $field['eval']['mandatory'] ?? false;
 
-            // from http://pastebin.com/HcjkHLQK
-            // via https://github.com/contao/core/issues/5086
-            // Convert date formats into timestamps (check the eval setting first -> #3063)
-            if ($currentRequest->request->get('FORM_SUBMIT') == 'caledit_submit') {
+            // Konvertiere Datumsformate in Timestamps
+            if (Input::post('FORM_SUBMIT') === 'caledit_submit') {
                 $rgxp = $field['eval']['rgxp'] ?? '';
-                if (($rgxp == 'date' || $rgxp == 'time' || $rgxp == 'datim') && $field['value'] != '') {
+                if (in_array($rgxp, ['date', 'time', 'datim'], true) && $field['value'] !== '') {
                     $objDate = new Date(Input::post($field['name']), $GLOBALS['TL_CONFIG'][$rgxp . 'Format']);
                     $field['value'] = $objDate->tstamp;
                 }
             }
 
-            $objWidget = new $strClass($this->prepareForWidget($field, $field['name'], $field['value']));
-            // Validate widget
-            if ($currentRequest->request->get('FORM_SUBMIT') == 'caledit_submit') {
+            // Überprüfen von options und reference
+            foreach (['options', 'reference'] as $key) {
+                $this->logger->error('Field configuration: checking array ' . $field['name'] . ' (' . $key . ' is type '.gettype($field[$key]).') - ' . sprintf('Expected array for %s, got %s.',$key,gettype($field[$key])));
+            }
+
+            $fieldAttributes = [
+                'id'        => $field['name'],
+                'name'      => $field['name'],
+                'label'     => $field['label'],
+                'value'     => $field['value'] ?? '',
+                'mandatory' => $field['eval']['mandatory'] ?? false,
+                'eval'      => $field['eval'] ?? [],
+                'options'   => $field['options'] ?? [],
+                'reference' => $field['reference'] ?? [],
+            ];
+
+            $this->logger->info('!Initialisiere Widget: '.$field['name'].': ' . print_r($fieldAttributes, true), ['module' => $this->name]);
+
+            $objWidget = new $strClass($fieldAttributes);
+            $this->logger->info('!Widget initialisiert: '.$field['name'].': ' . print_r($objWidget, true), ['module' => $this->name]);
+
+            // Validierung und Speicherung
+            if (Input::post('FORM_SUBMIT') === 'caledit_submit') {
                 $objWidget->validate();
                 if ($objWidget->hasErrors()) {
                     $doNotSubmit = true;
                 }
+                $field['value'] = Input::post($field['name']);
             }
+
             $arrWidgets[$field['name']] = $objWidget;
         }
         $arrWidgets['startDate']->parse();
@@ -894,7 +954,7 @@ class ModuleEventEditor extends Events
 
         $hasFrontendUser =  System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
 
-        if ((!$doNotSubmit) && ($currentRequest->request->get('FORM_SUBMIT') == 'caledit_submit')) {
+        if ((!$doNotSubmit) && (Input::post('FORM_SUBMIT') == 'caledit_submit')) {
             // everything seems to be ok, so we can add the POST Data
             // into the Database
             if (!$hasFrontendUser) {
@@ -929,12 +989,13 @@ class ModuleEventEditor extends Events
             $this->generateRedirect($jumpToSelection, $dbId);
         } else {
             // Do NOT Submit
-            if ($currentRequest->request->get('FORM_SUBMIT') == 'caledit_submit') {
+            if (Input::post('FORM_SUBMIT') == 'caledit_submit') {
                 $this->Template->InfoClass = 'tl_error';
                 if ($this->Template->InfoMessage == '') {
                     $this->Template->InfoMessage = $GLOBALS['TL_LANG']['MSC']['caledit_error'];
                 } // else: keep the InfoMesage as set before
             }
+
             $this->Template->fields = $arrWidgets;
         }
     }
@@ -979,6 +1040,7 @@ class ModuleEventEditor extends Events
         } else {
             $this->Template->CurrentPublishedInfo = $GLOBALS['TL_LANG']['MSC']['caledit_publishedEvent'];
         }
+
         $this->Template->CurrentPublished = $published;
 
         // create captcha field
@@ -1136,14 +1198,11 @@ class ModuleEventEditor extends Events
             ];
         }
 
-        // create jump-to-selection
-        $JumpOpts = ['new', 'view', 'edit', 'clone'];
-        $JumpRefs = [
-            'new' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToNew'],
-            'view' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView'],
-            'edit' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToEdit'],
-            'clone' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToClone']
-        ];
+        // Define options and references
+        $JumpOpts = ['new' ,'view','edit','clone'];
+
+        $JumpRefs = $GLOBALS['TL_LANG']['MSC']['caledit_JumpTo'];
+
         $fields['jumpToSelection'] = [
             'name' => 'jumpToSelection',
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpWhatsNext'],
@@ -1381,7 +1440,7 @@ class ModuleEventEditor extends Events
 
         $currentEventObject = null; // Standardwert für den Fall, dass kein Event vorhanden ist
 
-        if (count($this->allowedCalendars) == 0 && $eventID) {
+        if (count($this->allowedCalendars) === 0 && $eventID) {
             $fatalError = true;
             $this->errorString = $GLOBALS['TL_LANG']['MSC']['caledit_NoEditAllowed'];
         } else {
