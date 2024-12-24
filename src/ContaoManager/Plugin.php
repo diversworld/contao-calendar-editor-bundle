@@ -16,7 +16,6 @@
  *
  */
 
-
 namespace Diversworld\CalendarEditorBundle\ContaoManager;
 
 use Diversworld\CalendarEditorBundle\CalendarEditorBundle;
@@ -38,7 +37,6 @@ class Plugin implements BundlePluginInterface
 					[
 						'Contao\CoreBundle\ContaoCoreBundle',
 						'Contao\CalendarBundle\ContaoCalendarBundle',
-						'MenAtWork\MultiColumnWizard'
 					]
 				)
         ];
