@@ -40,4 +40,3 @@ services:
     arguments: ['contao.general']
     tags:
       - { name: monolog.logger, channel: contao.general }
-
