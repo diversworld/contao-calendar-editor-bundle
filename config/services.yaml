@@ -13,17 +13,27 @@ services:
       calls:
         - [ setContainer, [ '@service_container' ] ]
 
-  Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalenderEdit:
-    calls:
-      - [ setCheckAuthService, [ '@Diversworld\CalendarEditorBundle\Services\CheckAuthService' ] ]
+  Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalendarEdit:
+    public: true
+    arguments:
+      $checkAuthService: '@Diversworld\CalendarEditorBundle\Services\CheckAuthService'
+      $scopeMatcher: '@contao.routing.scope_matcher'
+      $logger: '@monolog.logger.contao.general'
+      $requestStack: '@request_stack'
+      $objModule: null
 
   Diversworld\CalendarEditorBundle\Controller\Module\ModuleEventEditor:
+    public: true
     arguments:
-      - '@?logger'
-      - '@contao.security.token_checker'
-      - '@database_connection'
+      $checkAuthService: '@Diversworld\CalendarEditorBundle\Services\CheckAuthService'
+      $scopeMatcher: '@contao.routing.scope_matcher'
+      $logger: '@monolog.logger.contao.general'
+      $requestStack: '@request_stack'
+      $connection: '@database_connection'
+      $objModule: null
     tags:
       - { name: monolog.logger, channel: contao.general }
+      - { name: contao.module }
 
   Diversworld\CalendarEditorBundle\Hooks\ListAllEventsHook:
     arguments:

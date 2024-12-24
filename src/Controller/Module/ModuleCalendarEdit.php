@@ -12,42 +12,46 @@ use Diversworld\CalendarEditorBundle\Models\CalendarModelEdit;
 use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Contao\ModuleCalendar;
 use Contao\CoreBundle\Routing\ScopeMatcher;
+use Diversworld\ContaoDucappBundle\Controller\MyCustomController;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Routing\Annotation\Route;
 
+#[Route(
+    path: '/calendar_edit',
+    name: 'calendarEdit',
+    defaults: ['_scope' => 'frontend', '_token_check' => true],
+    methods: ['GET']
+)]
 class ModuleCalendarEdit extends ModuleCalendar
 {
     // variable which indicates whether events can be added or not (on elapsed days)
     protected bool $allowElapsedEvents;
     protected bool $allowEditEvents;
 
-    private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
-    private RequestStack $requestStack; // Dependency Injection für RequestStack
-    private ?CheckAuthService $checkAuthService = null;
-
     private LoggerInterface $logger;
+    private ?CheckAuthService $checkAuthService = null;
+    private ScopeMatcher $scopeMatcher;
+    private RequestStack $requestStack;
 
-    protected function initializeLogger(): void
-    {
-        $this->logger = System::getContainer()->get('monolog.logger.contao.general');
+    public function __construct(
+        LoggerInterface $logger,
+        ScopeMatcher $scopeMatcher,
+        RequestStack $requestStack,
+        ?CheckAuthService $checkAuthService = null,
+        $objModule = null
+    ) {
+        parent::__construct($objModule);
+        $this->logger = $logger;
+        $this->checkAuthService = $checkAuthService;
+        $this->scopeMatcher = $scopeMatcher;
+        $this->requestStack = $requestStack;
     }
 
     public function setCheckAuthService(CheckAuthService $checkAuthService): void
     {
         $this->checkAuthService = $checkAuthService;
-    }
-
-    protected function initializeServices(): void
-    {
-        $container = System::getContainer();
-
-        if ($this->checkAuthService === null) {
-            $this->checkAuthService = $container->get('Diversworld\CalendarEditorBundle\Services\CheckAuthService');
-        }
-
-        $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
-        $this->requestStack = $container->get('request_stack');
     }
 
     public function getHolidayCalendarIDs($cals): array

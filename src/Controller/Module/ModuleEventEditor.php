@@ -27,12 +27,17 @@ use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Contao\CoreBundle\Security\Authentication\Token\TokenChecker;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\Routing\Annotation\Route;
 
+#[Route(
+    path: '/eventEditor',
+    name: 'EventEditor',
+    defaults: ['_scope' => 'frontend', '_token_check' => true],
+    methods: ['GET']
+)]
 class ModuleEventEditor extends Events
-{/**
+{
+    /**
      * Template
      *
      * @var string
@@ -41,40 +46,32 @@ class ModuleEventEditor extends Events
     protected string $errorString = '';
     protected array $allowedCalendars = [];
 
-    private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
-    private RequestStack $requestStack; // Dependency Injection für RequestStack
-    private TokenChecker $tokenChecker;
     private LoggerInterface $logger;
     private ?Connection $connection = null;
     private ?CheckAuthService $checkAuthService = null;
-    private RouterInterface $router;
+    private ScopeMatcher $scopeMatcher;
+    private RequestStack $requestStack;
 
-    protected function initializeLogger(): void
-    {
-        $this->logger = System::getContainer()->get('monolog.logger.contao.general');
-    }
-
-    protected function initializeServices(): void
-    {
-        $container = System::getContainer();
-
-        if ($this->checkAuthService === null) {
-            $this->checkAuthService = $container->get('Diversworld\CalendarEditorBundle\Services\CheckAuthService');
-        }
-
-        $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
-        $this->requestStack = $container->get('request_stack');
-        $this->connection = $container->get('database_connection'); // Hole die Doctrine Connection
-        $this->tokenChecker = $container->get('contao.security.token_checker');
-        $this->router = $container->get('router'); // Router-Service abrufen
+    public function __construct(
+        LoggerInterface $logger,
+        CheckAuthService $checkAuthService,
+        ScopeMatcher $scopeMatcher,
+        RequestStack $requestStack,
+        $connection = null,
+        $objModule = null
+    ) {
+        parent::__construct($objModule);
+        $this->logger = $logger;
+        $this->checkAuthService = $checkAuthService;
+        $this->scopeMatcher = $scopeMatcher;
+        $this->requestStack = $requestStack;
+        $this->connection = $connection;
     }
     /**
      * generate Module
      */
     public function generate() : string
     {
-        $this->initializeServices();
-
         //$request = System::getContainer()->get('request_stack')->getCurrentRequest();
         $request = $this->requestStack->getCurrentRequest();
 
@@ -105,7 +102,6 @@ class ModuleEventEditor extends Events
      **/
     public function getEditorFrontendURLForEvent($event): ?string
     {
-        $this->initializeServices();
         // Prüfen, ob das Event ein gültiges Objekt ist
         if (!$event || !$event->pid) {
             return null;
@@ -135,7 +131,7 @@ class ModuleEventEditor extends Events
 
             $rootDir = System::getContainer()->getParameter('kernel.project_dir');
 
-            $file = sprintf('%s/vendor/mindbird/contao-calendar-editor/src/Resources/contao/tinyMCE/%s.php', $rootDir, $configuration);
+            $file = sprintf('%s/vendor/diversworld/contao-calendar-editor/src/Resources/contao/tinyMCE/%s.php', $rootDir, $configuration);
             if (file_exists($rootDir . '/assets/tinymce4/js/langs/' . $GLOBALS['TL_LANGUAGE'] . '.js')) {
                 $this->language = $GLOBALS['TL_LANGUAGE'];
             }
@@ -253,7 +249,6 @@ class ModuleEventEditor extends Events
      */
     public function checkUserEditRights($user, $eventID, $currentObjectData): bool
     {
-        $this->initializeLogger();
         $this->logger->info('checkUserEditRights aufgerufen', ['module' => $this->name]);
         $this->logger->info('checkUserEditRights Parameter: ' . $user->id . ' eventID: ' . $eventID . ' currentObjectData pid: ' . print_r($currentObjectData, true), ['module' => $this->name]);
 
@@ -315,7 +310,6 @@ class ModuleEventEditor extends Events
 
     public function generateRedirect(string $userSetting, int $DBid): RedirectResponse
     {
-        $this->initializeServices();
         $currentRequest = $this->requestStack->getCurrentRequest();
 
         // Abrufen der aktuellen URL
@@ -423,9 +417,10 @@ class ModuleEventEditor extends Events
         $this->Template->CurrentDate = $this->Date::parseDate($GLOBALS['TL_CONFIG']['dateFormat'], $currentEventObject->startDate);
         $this->Template->CurrentPublished = $currentEventObject->published;
 
-        $urlGenerator = System::getContainer()->get(UrlGenerator::class);
         if ($currentEventObject->published) {
-            $this->Template->CurrentEventLink = $urlGenerator->generateEventUrl($currentEventObject);
+            $this->Template->CurrentEventLink = $this->router->generate($currentEventObject, [
+                'alias' => $currentEventObject->alias
+            ]);
             $this->Template->CurrentPublishedInfo = $GLOBALS['TL_LANG']['MSC']['caledit_publishedEvent'];
         } else {
             $this->Template->CurrentEventLink = '';
@@ -491,7 +486,6 @@ class ModuleEventEditor extends Events
 
     public function saveToDB($eventData, $oldId, array $contentData, $oldContentId) : int
     {
-        $this->initializeServices();
 
         if ($oldId === '') {
             // create new alias
@@ -603,11 +597,6 @@ class ModuleEventEditor extends Events
         $this->strTemplate = $this->caledit_template;
 
         $this->Template = new FrontendTemplate($this->strTemplate);
-
-        //Logger initialisieren
-        $this->initializeLogger();
-        // Services initialisieren
-        $this->initializeServices();
 
         // Input über den Symfony-DI-Container beziehen
         $currentRequest = $this->requestStack->getCurrentRequest();
@@ -1030,8 +1019,6 @@ class ModuleEventEditor extends Events
 
     protected function handleDelete($currentEventObject) : void
     {
-        //Services initialisieren
-        $this->initializeServices();
         // Input über den Symfony-DI-Container beziehen
         $currentRequest = $this->requestStack->getCurrentRequest();
 
@@ -1148,7 +1135,6 @@ class ModuleEventEditor extends Events
 
     protected function handleClone($currentEventObject) : void
     {
-        $this->initializeServices();
         $currentRequest = $this->requestStack->getCurrentRequest();
 
         $this->strTemplate = $this->caledit_clone_template;
@@ -1417,7 +1403,6 @@ class ModuleEventEditor extends Events
 
     protected function sendNotificationMail($NewEventData, $editID, $User, $cloneDates) : void
     {
-        $this->initializeServices();
         $currentRequest = $this->requestStack->getCurrentRequest();
 
         $notification = new Email();
@@ -1474,12 +1459,8 @@ class ModuleEventEditor extends Events
      */
     protected function compile() : void
     {
-        $this->initializeLogger();
         // Add TinyMCE-Stuff to header
         $this->addTinyMCE($this->caledit_tinMCEtemplate);
-
-        // Services initialisieren
-        $this->initializeServices();
 
         // Input über den Symfony-DI-Container beziehen
         $currentRequest = $this->requestStack->getCurrentRequest();

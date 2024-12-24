@@ -20,16 +20,16 @@
  * Front end modules
  */
 
-use Diversworld\CalendarEditorBundle\Hooks\ListAllEventsHook;
-use Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalenderEdit;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalendarEdit;
 use Diversworld\CalendarEditorBundle\Controller\Module\ModuleEventEditor;
 use Diversworld\CalendarEditorBundle\Controller\Module\ModuleEventReaderEdit;
 use Diversworld\CalendarEditorBundle\Controller\Module\ModuleHiddenEventlist;
 
-$GLOBALS['FE_MOD']['events']['calendarEdit']        = ModuleCalenderEdit::class;
+// Frontend Modules
+$GLOBALS['FE_MOD']['events']['calendarEdit']        = ModuleCalendarEdit::class;
 $GLOBALS['FE_MOD']['events']['EventEditor']         = ModuleEventEditor::class;
 $GLOBALS['FE_MOD']['events']['EventReaderEditLink'] = ModuleEventReaderEdit::class;
 $GLOBALS['FE_MOD']['events']['EventHiddenList']     = ModuleHiddenEventlist::class;
 
-//$GLOBALS['TL_HOOKS']['getAllEvents'][] = [ListAllEventsHook::class, 'updateAllEvents'];
+// Hooks
 $GLOBALS['TL_HOOKS']['listAllEvents'][] = ['Diversworld\CalendarEditorBundle\Hooks\ListAllEventsHook', 'onListAllEvents'];
