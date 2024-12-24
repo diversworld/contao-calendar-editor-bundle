@@ -1,6 +1,6 @@
 <?php
 
-namespace Diversworld\CalendarEditorBundle\Modules;
+namespace Diversworld\CalendarEditorBundle\Controller\Module;
 
 use Contao\BackendTemplate;
 use Contao\CalendarEventsModel;
@@ -182,7 +182,7 @@ class ModuleHiddenEventlist extends ModuleEventlist
             return $objTemplate->parse();
         }
 
-        $this->cal_calendar = $this->sortOutProtected(deserialize($this->cal_calendar, true));
+        $this->cal_calendar = $this->sortOutProtected(StringUtil::deserialize($this->cal_calendar, true));
 
         // Return if there are no calendars
         if (!is_array($this->cal_calendar) || count($this->cal_calendar) < 1) {

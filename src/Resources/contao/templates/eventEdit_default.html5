@@ -19,7 +19,7 @@
 </p>
 
 <?php if (($this->deleteRef) OR ($this->cloneRef) or ($this->editRef) or ($this->CurrentEventLink)  ) : ?>
-	<ul class="CalendarEditActionList">	
+	<ul class="CalendarEditActionList">
 		<?php if ($this->CurrentEventLink): ?>
 			<li class="viewlink"><a href="<?php echo $this->CurrentEventLink; ?>" title="<?php echo $this->CurrentTitle; ?>"> <?php echo $GLOBALS['TL_LANG']['MSC']['caledit_viewLabel'] ?> </a></li>
 		<?php endif; ?>
@@ -31,16 +31,16 @@
 		<?php endif; ?>
 		<?php if ($this->deleteRef): ?>
 			<li class="deletelink"><a href="<?php echo $this->deleteRef; ?>" title="<?php echo $this->deleteTitle; ?>"> <?php echo $this->deleteLabel; ?> </a></li>
-		<?php endif; ?>	
+		<?php endif; ?>
 	</ul>
 <?php endif; ?>
 
 <?php if (!$this->fields): ?>
-<h2>  <?php echo $GLOBALS['TL_LANG']['MSC']['caledit_InsertEventData']; ?></h2> 
+<h2>  <?php echo $GLOBALS['TL_LANG']['MSC']['caledit_InsertEventData']; ?></h2>
 <p class="error"><?php echo $this->FatalError; ?></p>
 <?php else: ?>
 <div class="event<?php echo $this->classList; ?>">
-<h2>  <?php echo $GLOBALS['TL_LANG']['MSC']['caledit_InsertEventData']; ?></h2> 
+<h2>  <?php echo $GLOBALS['TL_LANG']['MSC']['caledit_InsertEventData']; ?></h2>
 
 <?php if ($this->ContentWarning): ?>
 <p class="CalendarEditWarning"> <?php echo $this->ContentWarning; ?> </p>
@@ -53,64 +53,64 @@
 <div class="formbody">
         <form action="<?php echo $this->action; ?>" method="post">
         <input type="hidden" name="FORM_SUBMIT" value="caledit_submit" /><?php echo $this->messages; ?>
-		<input type="hidden" name="REQUEST_TOKEN" value="{{request_token}}">
+		<input type="hidden" name="REQUEST_TOKEN" value="<?= $this->requestToken ?>">
 
 			<?php if ($this->fields['startDate']): ?>
 				<?= $this->fields['startDate']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if ($this->fields['endDate']): ?>
 				<?= $this->fields['endDate']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if ($this->fields['startTime']): ?>
 				<?= $this->fields['startTime']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if ($this->fields['endTime']): ?>
 				<?= $this->fields['endTime']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if ($this->fields['title']): ?>
 				<?= $this->fields['title']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if ($this->fields['cssClass']): ?>
 				<?= $this->fields['cssClass']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if ($this->fields['location']): ?>
 				<?= $this->fields['location']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if ($this->fields['teaser']): ?>
 				<?= $this->fields['teaser']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if ($this->fields['details']): ?>
 				<?= $this->fields['details']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if ($this->fields['published']): ?>
 				<?= $this->fields['published']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if (isset($this->fields['saveAs']) && $this->fields['saveAs']): ?>
 				<?= $this->fields['saveAs']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if (isset($this->fields['pid']) && $this->fields['pid']): ?>
 				<?= $this->fields['pid']->parse() ?>
 			<?php endif; ?>
-			
+
 			<?php if (isset($this->fields['captcha']) && $this->fields['captcha']): ?>
 				<?= $this->fields['captcha']->parse() ?>
 			<?php endif; ?>
-					
+
 			<div>
 				<input type="submit" class="submit" value="<?php echo $this->submit; ?>" />
 			</div>
-			
+
 			<?php if ($this->fields['jumpToSelection']): ?>
 				<?= $this->fields['jumpToSelection']->parse() ?>
 			<?php endif; ?>

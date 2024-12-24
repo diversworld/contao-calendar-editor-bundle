@@ -4,15 +4,31 @@ services:
     autoconfigure: true
     public: false
 
-  Diversworld\CalendarEditorBundle\Modules\ModuleCalenderEdit:
+  _instanceof:
+    Contao\CoreBundle\Framework\FrameworkAwareInterface:
+      calls:
+        - [ setFramework, [ '@contao.framework' ] ]
+
+    Symfony\Component\DependencyInjection\ContainerAwareInterface:
+      calls:
+        - [ setContainer, [ '@service_container' ] ]
+
+  Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalenderEdit:
     calls:
       - [ setCheckAuthService, [ '@Diversworld\CalendarEditorBundle\Services\CheckAuthService' ] ]
 
-  Diversworld\CalendarEditorBundle\Modules\ModuleEventEditor:
+  Diversworld\CalendarEditorBundle\Controller\Module\ModuleEventEditor:
     arguments:
       - '@?logger'
+      - '@contao.security.token_checker'
+      - '@database_connection'
     tags:
       - { name: monolog.logger, channel: contao.general }
+
+  Diversworld\CalendarEditorBundle\Hooks\ListAllEventsHook:
+    arguments:
+      $checkAuthService: '@Diversworld\CalendarEditorBundle\Service\CheckAuthService'
+      $user: '@security.token_storage'
 
   Diversworld\CalendarEditorBundle\Services\CheckAuthService:
     autowire: true
@@ -25,11 +41,3 @@ services:
     tags:
       - { name: monolog.logger, channel: contao.general }
 
-  _instanceof:
-    Contao\CoreBundle\Framework\FrameworkAwareInterface:
-      calls:
-        - [ setFramework, [ '@contao.framework' ] ]
-
-    Symfony\Component\DependencyInjection\ContainerAwareInterface:
-      calls:
-        - [ setContainer, [ '@service_container' ] ]

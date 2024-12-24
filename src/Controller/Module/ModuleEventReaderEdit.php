@@ -1,11 +1,10 @@
 <?php
 
-namespace Diversworld\CalendarEditorBundle\Modules;
+namespace Diversworld\CalendarEditorBundle\Controller\Module;
 
 use Contao\BackendTemplate;
 use Contao\CalendarEventsModel;
 use Contao\Events;
-use Contao\FrontendUser;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
@@ -14,6 +13,7 @@ use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Contao\FrontendTemplate;
 use Contao\CoreBundle\Routing\ScopeMatcher;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Routing\Generator\UrlGenerator;
 
 class ModuleEventReaderEdit extends Events
 {
@@ -30,7 +30,6 @@ class ModuleEventReaderEdit extends Events
 
     public function setCheckAuthService(CheckAuthService $checkAuthService): void
     {
-        System::log('setCheckAuthService called successfully', __METHOD__, TL_GENERAL);
         $this->checkAuthService = $checkAuthService;
     }
 
@@ -109,10 +108,8 @@ class ModuleEventReaderEdit extends Events
         // Token checker service
         $time = time();
 
-        // Check if backend user is logged in
-        $backendUser = BackendUser::getInstance();
-
-        System::getContainer()->get('monolog.logger.contao.general')->info('BackendUser ' . $backendUser . ' ');
+        // Überprüfen, ob der Benutzer eingeloggt ist
+        $backendUser = $this->security->getUser();
 
         // Get the current event
         $objEvent = CalendarEventsModel::findPublishedByParentAndIdOrAlias(Input::get('auto_item'), $this->cal_calendar);
@@ -159,7 +156,10 @@ class ModuleEventReaderEdit extends Events
                     ->execute($calendarModel->id);
 
                 if ($objPage->numRows) {
-                    $strUrl = $this->generateFrontendUrl($objPage->row(), '');
+                    // UrlGenerator-Dienst laden
+                    $urlGenerator = $this->container->get(UrlGenerator::class);
+
+                    $strUrl = $urlGenerator->generateFrontendUrl($objPage->row(), '');
                 }
 
                 $this->Template->editRef = $strUrl . '?edit=' . $objEvent->id;

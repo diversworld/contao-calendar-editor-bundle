@@ -1,6 +1,6 @@
 <?php
 
-namespace Diversworld\CalendarEditorBundle\Modules;
+namespace Diversworld\CalendarEditorBundle\Controller\Module;
 
 use Contao\BackendTemplate;
 use Contao\Date;
@@ -35,7 +35,6 @@ class ModuleCalenderEdit extends ModuleCalendar
 
     public function setCheckAuthService(CheckAuthService $checkAuthService): void
     {
-        System::log('setCheckAuthService called successfully', __METHOD__, TL_GENERAL);
         $this->checkAuthService = $checkAuthService;
     }
 

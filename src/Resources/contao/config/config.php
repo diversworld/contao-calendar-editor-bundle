@@ -21,10 +21,10 @@
  */
 
 use Diversworld\CalendarEditorBundle\Hooks\ListAllEventsHook;
-use Diversworld\CalendarEditorBundle\Modules\ModuleCalenderEdit;
-use Diversworld\CalendarEditorBundle\Modules\ModuleEventEditor;
-use Diversworld\CalendarEditorBundle\Modules\ModuleEventReaderEdit;
-use Diversworld\CalendarEditorBundle\Modules\ModuleHiddenEventlist;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalenderEdit;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleEventEditor;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleEventReaderEdit;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleHiddenEventlist;
 
 $GLOBALS['FE_MOD']['events']['calendarEdit']        = ModuleCalenderEdit::class;
 $GLOBALS['FE_MOD']['events']['EventEditor']         = ModuleEventEditor::class;
