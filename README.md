@@ -6,7 +6,7 @@ This is a revision of the module for Contao 3. Essentially, everything should ru
 
 ## Features
 
-New settings in the Contao Calender: Enable Frontend editing
+New settings in the Contao Calendar: Enable Frontend editing
 * option: "Only future events", which disables editing of elapsed events
 * option: Login required (highly recommended on productive sites)
 * Define member groups for editing: "Members" and "Admins", which can edit all events (unless they are locked in the Backend, see below)
@@ -48,7 +48,7 @@ Should be placed on the site with the Eventreader module. Provides a proper edit
 
 ### The Calendar FE edit module
 
-Similar to the regular Contao Calendar, but with edit-Links and "add event"-Links for every day. As a bonus, a "Holiday Calendar" can be specified. Events from this calendar are shown in the day-header of the calender module, to mark some days as "holiday", or whatever.
+Similar to the regular Contao Calendar, but with edit-Links and "add event"-Links for every day. As a bonus, a "Holiday Calendar" can be specified. Events from this calendar are shown in the day-header of the calendar module, to mark some days as "holiday", or whatever.
 
 ## Usage
 
