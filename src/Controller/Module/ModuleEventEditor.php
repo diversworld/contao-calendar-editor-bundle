@@ -25,9 +25,11 @@ use Contao\Events;
 use Contao\FrontendTemplate;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Contao\CoreBundle\Security\Authentication\Token\TokenChecker;
-use Symfony\Component\Routing\Generator\UrlGenerator;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Routing\RouterInterface;
 
 class ModuleEventEditor extends Events
 {/**
@@ -45,6 +47,7 @@ class ModuleEventEditor extends Events
     private LoggerInterface $logger;
     private ?Connection $connection = null;
     private ?CheckAuthService $checkAuthService = null;
+    private RouterInterface $router;
 
     protected function initializeLogger(): void
     {
@@ -61,8 +64,9 @@ class ModuleEventEditor extends Events
 
         $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
         $this->requestStack = $container->get('request_stack');
-        // Hole die Doctrine Connection
+        $this->connection = $container->get('database_connection'); // Hole die Doctrine Connection
         $this->tokenChecker = $container->get('contao.security.token_checker');
+        $this->router = $container->get('router'); // Router-Service abrufen
     }
     /**
      * generate Module
@@ -114,11 +118,8 @@ class ModuleEventEditor extends Events
             return null;
         }
 
-        // UrlGenerator-Dienst laden
-        $urlGenerator = $this->container->get(UrlGenerator::class);
-
         // Generiere die URL zur Event-Detailseite
-        $url = $urlGenerator->generateFrontendUrl($pageModel->row(), [
+        $url = $this->router->generate($pageModel->row(), [
             'alias' => $event->alias
         ]);
 
@@ -312,42 +313,41 @@ class ModuleEventEditor extends Events
         }
     }
 
-    public function generateRedirect($userSetting, $DBid): void
+    public function generateRedirect(string $userSetting, int $DBid): RedirectResponse
     {
         $this->initializeServices();
         $currentRequest = $this->requestStack->getCurrentRequest();
 
         // Abrufen der aktuellen URL
         $currentUrl = $currentRequest->getUri();
-
         $jumpTo = preg_replace('/\?.*$/i', '', $currentUrl);
-
-        $urlGenerator = $this->container->get(UrlGenerator::class);
 
         switch ($userSetting) {
             case "":
                 // Get current "jumpTo" page
-                $objPage = $this->Database->prepare("SELECT * FROM tl_page WHERE id=?")
-                    ->limit(1)
-                    ->execute($this->jumpTo);
+                $objPage = \Contao\PageModel::findById($this->jumpTo);
 
-                if ($objPage->numRows) {
-                    $jumpTo = $urlGenerator->generateFrontendUrl($objPage->row());
+                if ($objPage !== null) {
+                    // Generiere die URL der Seite
+                    $jumpTo = $objPage->getFrontendUrl();
                 }
                 break;
 
             case "new":
+                // Logik für "new" bleibt unverändert
                 break;
 
             case "view":
-                $currentEventObject = CalendarEventsModelEdit::findByIdOrAlias($DBid);
-                // UrlGenerator-Dienst laden
+                $currentEventObject = \Contao\CalendarEventsModel::findByIdOrAlias($DBid);
 
-
-                if ($currentEventObject->published) {
-                    $jumpTo = $urlGenerator->generateEventURL($currentEventObject);
+                if ($currentEventObject !== null && $currentEventObject->published) {
+                    // Abrufen der Zielseite aus den Event-Daten
+                    $eventPage = \Contao\PageModel::findById($currentEventObject->pid);
+                    if ($eventPage !== null) {
+                        $jumpTo = $eventPage->getFrontendUrl('/' . $currentEventObject->alias);
+                    }
                 } else {
-                    // event is not published, so show it in the editor again
+                    // Event ist nicht veröffentlicht, zurück zum Editor
                     $jumpTo .= '?edit=' . $DBid;
                 }
                 break;
@@ -361,7 +361,8 @@ class ModuleEventEditor extends Events
                 break;
         }
 
-        $this->redirect($jumpTo, 301);
+        // Redirect mit RedirectResponse
+        return new RedirectResponse($jumpTo, 301);
     }
 
     public function getContentElements($eventID, &$contentID, &$contentData): void
@@ -422,7 +423,7 @@ class ModuleEventEditor extends Events
         $this->Template->CurrentDate = $this->Date::parseDate($GLOBALS['TL_CONFIG']['dateFormat'], $currentEventObject->startDate);
         $this->Template->CurrentPublished = $currentEventObject->published;
 
-        $urlGenerator = $this->container->get(UrlGenerator::class);
+        $urlGenerator = System::getContainer()->get(UrlGenerator::class);
         if ($currentEventObject->published) {
             $this->Template->CurrentEventLink = $urlGenerator->generateEventUrl($currentEventObject);
             $this->Template->CurrentPublishedInfo = $GLOBALS['TL_LANG']['MSC']['caledit_publishedEvent'];
@@ -490,7 +491,7 @@ class ModuleEventEditor extends Events
 
     public function saveToDB($eventData, $oldId, array $contentData, $oldContentId) : int
     {
-        $this->connection = $this->container->get('database_connection');
+        $this->initializeServices();
 
         if ($oldId === '') {
             // create new alias
