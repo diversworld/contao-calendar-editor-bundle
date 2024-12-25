@@ -3,6 +3,7 @@
 namespace Diversworld\CalendarEditorBundle\Controller\Module;
 
 use Contao\BackendTemplate;
+use Contao\CoreBundle\Security\Authentication\Token\TokenChecker;
 use Contao\Date;
 use Contao\FrontendUser;
 use Contao\PageModel;
@@ -16,7 +17,7 @@ use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
-class ModuleCalenderEdit extends ModuleCalendar
+class ModuleCalendarEdit extends ModuleCalendar
 {
 	// variable which indicates whether events can be added or not (on elapsed days)
 	protected bool $allowElapsedEvents;
@@ -24,7 +25,7 @@ class ModuleCalenderEdit extends ModuleCalendar
 
     private ScopeMatcher $scopeMatcher; // Dependency Injection für ScopeMatcher
     private RequestStack $requestStack; // Dependency Injection für RequestStack
-    private ?CheckAuthService $checkAuthService = null;
+    private ?CheckAuthService $checkAuthService;
 
     private LoggerInterface $logger;
 
@@ -41,10 +42,7 @@ class ModuleCalenderEdit extends ModuleCalendar
     protected function initializeServices(): void
     {
         $container = System::getContainer();
-
-        if ($this->checkAuthService === null) {
-            $this->checkAuthService = $container->get('Diversworld\CalendarEditorBundle\Services\CheckAuthService');
-        }
+        $this->checkAuthService = $container->get('Diversworld\CalendarEditorBundle\Services\CheckAuthService');
 
         $this->scopeMatcher = $container->get('contao.routing.scope_matcher');
         $this->requestStack = $container->get('request_stack');
@@ -80,8 +78,6 @@ class ModuleCalenderEdit extends ModuleCalendar
 	// overwrite the compileWeeks-Method from ModuleCalendar
 	protected function compileWeeks(): array
     {
-        $this->initializeLogger();
-        $this->logger->info('compileWeeks called successfully', ['module' => $this->name]);
 		$intDaysInMonth = (int)date('t', $this->Date->monthBegin);
 		$intFirstDayOffset = (int)(date('w', $this->Date->monthBegin) - $this->cal_startDay);
 
@@ -101,7 +97,6 @@ class ModuleCalenderEdit extends ModuleCalendar
 				$addUrl = $page->getFrontendUrl();
 			}
 		}
-        $this->logger->info('addUrl: ' . $addUrl, ['module' => $this->name]);
 
 		$intYear = date('Y', $this->Date->tstamp);
 		$intMonth = date('m', $this->Date->tstamp);

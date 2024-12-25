@@ -13,7 +13,7 @@ services:
       calls:
         - [ setContainer, [ '@service_container' ] ]
 
-  Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalenderEdit:
+  Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalendarEdit:
     calls:
       - [ setCheckAuthService, [ '@Diversworld\CalendarEditorBundle\Services\CheckAuthService' ] ]
 
@@ -21,7 +21,7 @@ services:
     arguments:
       - '@?logger'
       - '@contao.security.token_checker'
-      - '@database_connection'
+      - '@doctrine.dbal.default_connection'
     tags:
       - { name: monolog.logger, channel: contao.general }
 

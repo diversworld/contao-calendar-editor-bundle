@@ -68,6 +68,4 @@ $GLOBALS['TL_LANG']['MSC']['caledit_MultipleContentElements'] = "Für diesen Ter
 $GLOBALS['TL_LANG']['MSC']['caledit_ContentElementWithImage'] = "Diesem Termin wurde ein Bild hinzugefügt, das Sie mit diesem Formular nicht bearbeiten können. Benutzen Sie dafür bitte das Backend.";
 $GLOBALS['TL_LANG']['MSC']['caledit_error'] = "Ein Fehler ist aufgetreten.";
 $GLOBALS['TL_LANG']['MSC']['caledit_CloneWarning'] = "Sie sind dabei, einen Termin zu duplizieren. Stellen Sie sicher, dass alle Informationen korrekt sind, da Sie sonst später jeden einzelnen Termin bearbeiten müssen.";
-
-
-?>
+$GLOBALS['TL_LANG']['MSC']['caledit_InvalidAction'] = "Nicht erlaubte Aktion erkannt.";

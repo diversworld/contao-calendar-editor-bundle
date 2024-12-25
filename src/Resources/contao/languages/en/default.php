@@ -76,7 +76,5 @@ $GLOBALS['TL_LANG']['MSC']['caledit_ContentElementWithImage'] = "There is an ima
 $GLOBALS['TL_LANG']['MSC']['caledit_error'] = "An error occured.";
 $GLOBALS['TL_LANG']['MSC']['caledit_CloneWarning'] = "You are about to duplicate an event. Be sure that all information is correct, as can't edit them at once after this.";
 $GLOBALS['TL_LANG']['MSC']['caledit_deleteWarning'] = "You are about to delete an event. This can not be reversed.";
+$GLOBALS['TL_LANG']['MSC']['caledit_InvalidAction'] = "Invalid acktion recognized.";
 
-
-
-?>
