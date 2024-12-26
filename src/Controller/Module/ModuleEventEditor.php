@@ -27,6 +27,7 @@ use Contao\Date;
 use Contao\Events;
 use Contao\FrontendTemplate;
 use Doctrine\DBAL\Connection;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Contao\CoreBundle\Security\Authentication\Token\TokenChecker;
 use Symfony\Component\Routing\Generator\UrlGenerator;
@@ -48,6 +49,12 @@ class ModuleEventEditor extends Events
     private TokenChecker $tokenChecker;
     private ?CheckAuthService $checkAuthService = null;
     private Connection $connection;
+
+    private LoggerInterface $logger;
+    protected function initializeLogger(): void
+    {
+        $this->logger = System::getContainer()->get('monolog.logger.contao.general');
+    }
 
     protected function initializeServices(): void
     {
@@ -306,9 +313,9 @@ class ModuleEventEditor extends Events
         switch ($userSetting) {
             case "":
                 if ($this->jumpTo) {
-                    $pageModel = PageModel::findByPk($this->jumpTo);
+                    $pageModel = PageModel::findByPk($DBid);
                     if ($pageModel !== null) {
-                        $urlGenerator = $this->container->get(UrlGenerator::class);
+                        $urlGenerator = System::getContainer()->get('contao.routing.content_url_generator');
                         $jumpTo = $urlGenerator->generate($pageModel);
                     }
                 }
@@ -323,8 +330,8 @@ class ModuleEventEditor extends Events
                 if ($currentEventObject !== null) {
                     if ($currentEventObject->published) {
                         // URL-Generator verwenden
-                        $urlGenerator = $this->container->get(UrlGenerator::class);
-                        $jumpTo = $urlGenerator->generate($currentEventObject, UrlGeneratorInterface::ABSOLUTE_URL);
+                        $urlGenerator = System::getContainer()->get('contao.routing.content_url_generator');
+                        $jumpTo = $urlGenerator->generate($currentEventObject);
                     } else {
                         $jumpTo = '?edit=' . $DBid; // Event nicht veröffentlicht, Bearbeitungslink
                     }
@@ -348,7 +355,6 @@ class ModuleEventEditor extends Events
         // Redirect ausführen
         $this->redirect($jumpTo, 301);
     }
-
 
     public function getContentElements($eventID, &$contentID, &$contentData): void
     {
@@ -590,6 +596,8 @@ class ModuleEventEditor extends Events
     protected function handleEdit($editID, $currentEventObject): void
     {
         $this->initializeServices();
+        $this->initializeLogger();
+
         $this->strTemplate = $this->caledit_template;
 
         $this->Template = new FrontendTemplate($this->strTemplate);
@@ -688,6 +696,7 @@ class ModuleEventEditor extends Events
         $mandDetails = (is_array($mandfields) && array_intersect(array('details'), $mandfields));
         $mandStarttime = (is_array($mandfields) && array_intersect(array('starttime'), $mandfields));
         $mandCss = (is_array($mandfields) && array_intersect(array('css'), $mandfields));
+
         // fill template with fields ...
         $fields = [];
         $fields['startDate'] = [
@@ -695,9 +704,11 @@ class ModuleEventEditor extends Events
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_startdate'],
             'inputType' => 'text', // or: 'calendarfield' (see below),
             'value' => $newEventData['startDate'],
-            'eval' => ['rgxp' => 'date',
+            'eval' => [
+                'rgxp' => 'date',
                 'mandatory' => true,
-                'decodeEntities' => true]
+                'decodeEntities' => true
+            ]
         ];
 
         $fields['endDate'] = [
@@ -705,7 +716,12 @@ class ModuleEventEditor extends Events
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_enddate'],
             'inputType' => 'text',
             'value' => $newEventData['endDate'] ?? null,
-            'eval' => ['rgxp' => 'date', 'mandatory' => false, 'maxlength' => 128, 'decodeEntities' => true]
+            'eval' => [
+                'rgxp' => 'date',
+                'mandatory' => false,
+                'maxlength' => 128,
+                'decodeEntities' => true
+            ]
         ];
 
         /*if ($this->caledit_useDatePicker) {
@@ -718,7 +734,12 @@ class ModuleEventEditor extends Events
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_starttime'],
             'inputType' => 'text',
             'value' => $newEventData['startTime'] ?? '',
-            'eval' => ['rgxp' => 'time', 'mandatory' => $mandStarttime, 'maxlength' => 128, 'decodeEntities' => true]
+            'eval' => [
+                'rgxp' => 'time',
+                'mandatory' => $mandStarttime,
+                'maxlength' => 128,
+                'decodeEntities' => true
+            ]
         ];
 
         $fields['endTime'] = [
@@ -726,7 +747,12 @@ class ModuleEventEditor extends Events
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_endtime'],
             'inputType' => 'text',
             'value' => $newEventData['endTime'] ?? '',
-            'eval' => ['rgxp' => 'time', 'mandatory' => false, 'maxlength' => 128, 'decodeEntities' => true]
+            'eval' => [
+                'rgxp' => 'time',
+                'mandatory' => false,
+                'maxlength' => 128,
+                'decodeEntities' => true
+            ]
         ];
 
         $fields['title'] = [
@@ -734,7 +760,11 @@ class ModuleEventEditor extends Events
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_title'],
             'inputType' => 'text',
             'value' => $newEventData['title'] ?? '',
-            'eval' => ['mandatory' => true, 'maxlength' => 255, 'decodeEntities' => true]
+            'eval' => [
+                'mandatory' => true,
+                'maxlength' => 255,
+                'decodeEntities' => true
+            ]
         ];
 
         $fields['location'] = [
@@ -742,7 +772,11 @@ class ModuleEventEditor extends Events
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_location'],
             'inputType' => 'text',
             'value' => $newEventData['location'] ?? '',
-            'eval' => ['mandatory' => $mandLocation, 'maxlength' => 255, 'decodeEntities' => true]
+            'eval' => [
+                'mandatory' => $mandLocation,
+                'maxlength' => 255,
+                'decodeEntities' => true
+            ]
         ];
 
         $fields['teaser'] = [
@@ -750,7 +784,11 @@ class ModuleEventEditor extends Events
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_teaser'],
             'inputType' => 'textarea',
             'value' => $newEventData['teaser'] ?? '',
-            'eval' => ['mandatory' => $mandTeaser, 'rte' => 'tinyMCE', 'allowHtml' => true]
+            'eval' => [
+                'mandatory' => $mandTeaser,
+                'rte' => 'tinyMCE',
+                'allowHtml' => true
+            ]
         ];
 
         $fields['details'] = [
@@ -758,7 +796,11 @@ class ModuleEventEditor extends Events
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_details'],
             'inputType' => 'textarea',
             'value' => $NewContentData['text'] ?? '',
-            'eval' => ['mandatory' => $mandDetails, 'rte' => 'tinyMCE', 'allowHtml' => true]
+            'eval' => [
+                'mandatory' => $mandDetails,
+                'rte' => 'tinyMCE',
+                'allowHtml' => true
+            ]
         ];
 
         if (count($this->allowedCalendars) > 1) {
@@ -776,7 +818,9 @@ class ModuleEventEditor extends Events
                 'options' => $popt,
                 'value' => $newEventData['pid'] ?? $cal->id,
                 'reference' => $pref,
-                'eval' => ['mandatory' => true]
+                'eval' => [
+                    'mandatory' => true
+                ]
             ];
         }
 
@@ -802,7 +846,11 @@ class ModuleEventEditor extends Events
                 'options' => $opt,
                 'value' => $newEventData['cssClass'] ?? '',
                 'reference' => $ref,
-                'eval' => ['mandatory' => $mandCss, 'includeBlankOption' => true, 'maxlength' => 128, 'decodeEntities' => true]
+                'eval' => [
+                    'mandatory' => $mandCss,
+                    'includeBlankOption' => true,
+                    'maxlength' => 128, 'decodeEntities' => true
+                ]
             ];
         } else {
             $fields['cssClass'] = [
@@ -810,7 +858,11 @@ class ModuleEventEditor extends Events
                 'label' => $cssLabel,
                 'inputType' => 'text',
                 'value' => $newEventData['cssClass'] ?? '',
-                'eval' => ['mandatory' => $mandCss, 'maxlength' => 128, 'decodeEntities' => true]
+                'eval' => [
+                    'mandatory' => $mandCss,
+                    'maxlength' => 128,
+                    'decodeEntities' => true
+                ]
             ];
         }
 
@@ -854,34 +906,49 @@ class ModuleEventEditor extends Events
         }
 
         // Create jump-to-selection
-        $JumpOpts = [0 => 'new', 1 => 'view', 2 => 'edit', 3 => 'clone'];
+        /*$JumpOpts = ['new' => 'new', 'view' => 'view', 'edit' => 'edit', 'clone' => 'clone'];
         $JumpRefs = [
             'new' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToNew'],
             'view' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView'],
             'edit' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToEdit'],
             'clone' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToClone']
-        ];
+        ];*/
 
-        // Umwandlung in die Contao-konforme Struktur
-        $JumpOptions = array_map(function ($option) use ($JumpRefs) {
-            return [
-                'value' => $option,
-                'label' => $JumpRefs[$option] ?? $option
+        // Umwandlung in Contao-konforme Struktur
+        /*$JumpOptions = [];
+        foreach ($JumpOpts as $key => $value) {
+            $JumpOptions[$key] = [
+                'value' => $value,
+                'label' => $JumpRefs[$key] ?? $value
             ];
-        }, $JumpOpts);
+        }*/
 
+        // Formularfeld definieren
         $fields['jumpToSelection'] = [
             'name' => 'jumpToSelection',
             'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpWhatsNext'],
             'inputType' => 'select',
-            'options' => $JumpOptions,
-            'value' => $jumpToSelection, // Vorausgewählter Wert
-            'eval' => [
-                'mandatory' => false,
-                'includeBlankOption' => true,
-                'maxlength' => 128,
-                'decodeEntities' => true,
+            // arrOptions wird direkt verwendet
+            'options' => [
+                ['value' => '', 'label' => '-'],
+                ['value' => 'new', 'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToNew']],
+                ['value' => 'view', 'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView']],
+                ['value' => 'edit', 'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToEdit']],
+                ['value' => 'clone', 'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToClone']]
             ],
+            'reference' => [
+                ['value' => '', 'label' => '-'],
+                ['value' => 'new', 'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToNew']],
+                ['value' => 'view', 'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToView']],
+                ['value' => 'edit', 'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToEdit']],
+                ['value' => 'clone', 'label' => $GLOBALS['TL_LANG']['MSC']['caledit_JumpToClone']]
+            ],//$JumpOptions, // Optional für bestimmte Renderer
+            //'arrOptions' => $JumpOptions,
+            'value' => '', // Vorausgewählter Wert
+            'eval' => [
+                'mandatory' => true,
+                'includeBlankOption' => true,
+            ]
         ];
 
         // here: CALL Hooks with $NewEventData, $currentEventObject, $fields
@@ -939,7 +1006,6 @@ class ModuleEventEditor extends Events
         // or the date is in the future
         //$tmpStartDate = strtotime($arrWidgets['startDate']->__get('value'));
         //$tmpEndDate = strtotime($arrWidgets['endDate']->__get('value'));
-
         $validDate = $this->checkValidDate($newEventData['pid'] ?? 0, $arrWidgets['startDate'], $arrWidgets['endDate']);
         if (!$validDate) {
             // modification of the widget is done in checkValidDate
@@ -982,7 +1048,6 @@ class ModuleEventEditor extends Events
                     $this->sendNotificationMail($newEventData, $editID, $this->User->username, '');
                 }
             }
-
             $this->generateRedirect($jumpToSelection, $dbId);
         } else {
             // Do NOT Submit

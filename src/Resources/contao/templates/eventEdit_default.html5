@@ -107,13 +107,13 @@
 				<?= $this->fields['captcha']->parse() ?>
 			<?php endif; ?>
 
+            <?php if (isset($this->fields['jumpToSelection']) && $this->fields['jumpToSelection']): ?>
+				<?= $this->fields['jumpToSelection']->parse() ?>
+			<?php endif; ?>
+
 			<div>
 				<input type="submit" class="submit" value="<?php echo $this->submit; ?>" />
 			</div>
-
-			<?php if ($this->fields['jumpToSelection']): ?>
-				<?= $this->fields['jumpToSelection']->parse() ?>
-			<?php endif; ?>
 
         </form>
 </div>
