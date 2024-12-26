@@ -1,0 +1,3 @@
+diversworld_calendar_editor:
+  resource: "@DiversworldCalendarEditorBundle/Controller/"
+  type: annotation
