@@ -6,6 +6,8 @@ use Contao\CoreBundle\Monolog\ContaoContext;
 use Contao\Module;
 use Contao\FrontendTemplate;
 use Contao\ModuleModel;
+use Diversworld\CalendarEditorBundle\Controller\Module\ModuleCalendarEdit;
+use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Symfony\Component\DependencyInjection\Container;
 
 class CalendarEditorModule extends Module

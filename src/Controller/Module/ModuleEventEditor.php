@@ -16,7 +16,6 @@ use Contao\FormText;
 use Contao\FormTextarea;
 use Contao\FrontendUser;
 use Contao\Image\Exception\InvalidArgumentException;
-use Contao\Image\Exception\RuntimeException;
 use Contao\PageModel;
 use Contao\StringUtil;
 use Contao\System;
@@ -31,7 +30,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Contao\CoreBundle\Security\Authentication\Token\TokenChecker;
 use Symfony\Component\Routing\Generator\UrlGenerator;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class ModuleEventEditor extends Events
 {
@@ -304,7 +302,7 @@ class ModuleEventEditor extends Events
     {
         $this->initializeServices();
         $currentRequest = $this->requestStack->getCurrentRequest();
-        $router = System::getContainer()->get('router'); // Symfony Router
+        //$router = System::getContainer()->get('router'); // Symfony Router
 
         // Abrufen der aktuellen URL ohne Query-Parameter
         $currentUrl = $currentRequest->getUri();

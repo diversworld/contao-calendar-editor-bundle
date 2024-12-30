@@ -12,6 +12,7 @@ use Diversworld\CalendarEditorBundle\Models\CalendarModelEdit;
 use Diversworld\CalendarEditorBundle\Services\CheckAuthService;
 use Contao\FrontendTemplate;
 use Contao\CoreBundle\Routing\ScopeMatcher;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 
@@ -69,7 +70,7 @@ class ModuleEventReaderEdit extends Events
 	 * Display a wildcard in the back end
 	 * @return string
 	 */
-	public function generate()
+	public function generate() : string
 	{
         $request = System::getContainer()->get('request_stack')->getCurrentRequest();
 
@@ -106,10 +107,10 @@ class ModuleEventReaderEdit extends Events
         $this->Template->editRef = '';
 
         // Token checker service
-        $time = time();
+       // $time = time();
 
         // Überprüfen, ob der Benutzer eingeloggt ist
-        $backendUser = $this->security->getUser();
+        //$backendUser = $this->security->getUser();
 
         // Get the current event
         $objEvent = CalendarEventsModel::findPublishedByParentAndIdOrAlias(Input::get('auto_item'), $this->cal_calendar);
@@ -131,7 +132,7 @@ class ModuleEventReaderEdit extends Events
             // Calendar allows editing
             $checkAuth = System::getContainer()->get(CheckAuthService::class);
             if (!$checkAuth instanceof CheckAuthService) {
-                throw new \RuntimeException('Invalid API service.');
+                throw new RuntimeException('Invalid API service.');
             }
             $this->checkAutService = $checkAuth;
 
@@ -206,5 +207,3 @@ class ModuleEventReaderEdit extends Events
     }
 
 }
-
-?>

@@ -69,7 +69,7 @@ class ModuleHiddenEventlist extends ModuleEventlist
      */
     protected $strTemplate = 'mod_eventlist';
 
-    protected static $table = 'tl_calendar_events';
+    protected static string $table = 'tl_calendar_events';
 
 
     public static function findCurrentUnPublishedByPid(int $pid, int $start, int $end, array $options = [])
@@ -87,6 +87,9 @@ class ModuleHiddenEventlist extends ModuleEventlist
         return CalendarEventsModel::findBy($arrColumns, $pid, $options);
     }
 
+    /**
+     * @throws \Exception
+     */
     protected function getAllEvents($arrCalendars, $intStart, $intEnd, $blnFeatured = null)
     {
         if (!is_array($arrCalendars)) {
@@ -141,7 +144,7 @@ class ModuleHiddenEventlist extends ModuleEventlist
                             continue;
                         }
 
-                        $this->addEvent($objEvents, $objEvents->startTime, $objEvents->endTime, $strUrl, $intStart, $intEnd, $id);
+                        $this->addEvent($objEvents, $objEvents->startTime, $objEvents->endTime, $strUrl, $intStart, $intEnd);
                     }
                 }
             }
@@ -168,7 +171,7 @@ class ModuleHiddenEventlist extends ModuleEventlist
      * Display a wildcard in the back end
      * @return string
      */
-    public function generate()
+    public function generate() : string
     {
         if ($this->isBackend()) {
             $objTemplate = new BackendTemplate('be_wildcard');
@@ -196,10 +199,8 @@ class ModuleHiddenEventlist extends ModuleEventlist
     /**
      * Generate module
      */
-    protected function compile()
+    protected function compile() : void
     {
         parent::compile();
     }
 }
-
-?>
