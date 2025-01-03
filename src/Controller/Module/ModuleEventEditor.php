@@ -129,7 +129,7 @@ class ModuleEventEditor extends Events
 
             $rootDir = System::getContainer()->getParameter('kernel.project_dir');
 
-            $file = sprintf('%s/vendor/mindbird/contao-calendar-editor/src/Resources/contao/tinyMCE/%s.php', $rootDir, $configuration);
+            $file = sprintf('%s/vendor/diversworld/contao-calendar-editor/src/Resources/contao/tinyMCE/%s.php', $rootDir, $configuration);
             if (file_exists($rootDir . '/assets/tinymce4/js/langs/' . $GLOBALS['TL_LANGUAGE'] . '.js')) {
                 $this->language = $GLOBALS['TL_LANGUAGE'];
             }

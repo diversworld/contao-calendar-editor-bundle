@@ -341,7 +341,7 @@ class calendar_eventeditor extends Backend //implements ContainerAwareInterface
         $rootDir = System::getContainer()->getParameter('kernel.project_dir');
 
         // Define the path to the tinyMCE configuration files
-        $tinyMCEPath = $rootDir . '/vendor/mindbird/contao-calendar-editor/src/Resources/contao/tinyMCE/';
+        $tinyMCEPath = $rootDir . '/vendor/diversworld/contao-calendar-editor/src/Resources/contao/tinyMCE/';
 
         // Check if the directory exists
         if (is_dir($tinyMCEPath)) {
